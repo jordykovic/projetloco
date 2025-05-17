@@ -11,22 +11,22 @@ import {
 } from "contexts/session/types";
 import {
   DEFAULT_LOCALE,
+  DESKTOP_PATH,
   HIGH_PRIORITY_REQUEST,
   ICON_CACHE,
   ICON_PATH,
   ICON_RES_MAP,
   MAX_ICON_SIZE,
   MAX_RES_ICON_OVERRIDE,
+  MILLISECONDS_IN_SECOND,
   ONE_TIME_PASSIVE_EVENT,
   PREVENT_SCROLL,
+  SHORTCUT_EXTENSION,
   SUPPORTED_ICON_SIZES,
   TASKBAR_HEIGHT,
   TIMESTAMP_DATE_FORMAT,
   USER_ICON_PATH,
 } from "utils/constants";
-import { LOCAL_HOST } from "components/apps/Browser/config";
-
-export const GOOGLE_SEARCH_QUERY = "https://www.google.com/search?igu=1&q=";
 
 export const bufferToBlob = (buffer: Buffer, type?: string): Blob =>
   new Blob([buffer], type ? { type } : undefined);
@@ -35,6 +35,33 @@ export const bufferToUrl = (buffer: Buffer, mimeType?: string): string =>
   mimeType === "image/svg+xml"
     ? `data:${mimeType};base64,${window.btoa(buffer.toString())}`
     : URL.createObjectURL(bufferToBlob(buffer, mimeType));
+
+const RESIZE_IMAGE_TIMEOUT_SECONDS = 60;
+
+export const resizeImage = async (
+  blob: Blob,
+  maxDimension: number
+): Promise<Blob> =>
+  new Promise((resolve) => {
+    const worker = new Worker(
+      new URL("utils/resizeImage.worker", import.meta.url),
+      { name: "Resize Image Worker" }
+    );
+    const timeoutHandle = setTimeout(() => {
+      resolve(blob);
+      worker.terminate();
+    }, RESIZE_IMAGE_TIMEOUT_SECONDS * MILLISECONDS_IN_SECOND);
+    const canvas = document
+      .createElement("canvas")
+      .transferControlToOffscreen();
+
+    worker.addEventListener("message", ({ data }: { data: Blob }) => {
+      clearTimeout(timeoutHandle);
+      resolve(data instanceof Blob ? data : blob);
+      worker.terminate();
+    });
+    worker.postMessage({ blob, canvas, maxDimension }, [canvas]);
+  });
 
 let dpi: number;
 
@@ -181,6 +208,9 @@ export const blobToBase64 = (blob: Blob): Promise<string> =>
 export const blobToBuffer = async (blob?: Blob | null): Promise<Buffer> =>
   blob ? Buffer.from(await blob.arrayBuffer()) : Buffer.from("");
 
+export const fetchBlob = async (url: string): Promise<Blob> =>
+  (await fetch(url)).blob();
+
 export const canvasToBuffer = (canvas?: HTMLCanvasElement): Buffer =>
   Buffer.from(
     canvas?.toDataURL("image/png").replace("data:image/png;base64,", "") || "",
@@ -259,10 +289,11 @@ const loadScript = (
   src: string,
   defer?: boolean,
   force?: boolean,
-  asModule?: boolean
+  asModule?: boolean,
+  contentWindow = window as Window
 ): Promise<Event> =>
   new Promise((resolve, reject) => {
-    const loadedScripts = [...document.scripts];
+    const loadedScripts = [...contentWindow.document.scripts];
     const currentScript = loadedScripts.find((loadedScript) =>
       loadedScript.src.endsWith(src)
     );
@@ -276,7 +307,7 @@ const loadScript = (
       currentScript.remove();
     }
 
-    const script = document.createElement("script");
+    const script = contentWindow.document.createElement("script");
 
     script.async = false;
     if (defer) script.defer = true;
@@ -286,13 +317,16 @@ const loadScript = (
     script.addEventListener("error", reject, ONE_TIME_PASSIVE_EVENT);
     script.addEventListener("load", resolve, ONE_TIME_PASSIVE_EVENT);
 
-    document.head.append(script);
+    contentWindow.document.head.append(script);
   });
 
-const loadStyle = (href: string): Promise<Event> =>
+const loadStyle = (
+  href: string,
+  contentWindow = window as Window
+): Promise<Event> =>
   new Promise((resolve, reject) => {
     const loadedStyles = [
-      ...document.querySelectorAll("link[rel=stylesheet]"),
+      ...contentWindow.document.querySelectorAll("link[rel=stylesheet]"),
     ] as HTMLLinkElement[];
 
     if (loadedStyles.some((loadedStyle) => loadedStyle.href.endsWith(href))) {
@@ -300,7 +334,7 @@ const loadStyle = (href: string): Promise<Event> =>
       return;
     }
 
-    const link = document.createElement("link");
+    const link = contentWindow.document.createElement("link");
 
     link.rel = "stylesheet";
     link.fetchPriority = "high";
@@ -308,21 +342,22 @@ const loadStyle = (href: string): Promise<Event> =>
     link.addEventListener("error", reject, ONE_TIME_PASSIVE_EVENT);
     link.addEventListener("load", resolve, ONE_TIME_PASSIVE_EVENT);
 
-    document.head.append(link);
+    contentWindow.document.head.append(link);
   });
 
 export const loadFiles = async (
   files?: string[],
   defer?: boolean,
   force?: boolean,
-  asModule?: boolean
+  asModule?: boolean,
+  contentWindow?: Window
 ): Promise<void> =>
   !files || files.length === 0
     ? Promise.resolve()
     : files.reduce(async (_promise, file) => {
         await (getExtension(file) === ".css"
-          ? loadStyle(encodeURI(file))
-          : loadScript(encodeURI(file), defer, force, asModule));
+          ? loadStyle(encodeURI(file), contentWindow)
+          : loadScript(encodeURI(file), defer, force, asModule, contentWindow));
       }, Promise.resolve());
 
 export const getHtmlToImage = async (): Promise<
@@ -402,6 +437,60 @@ const calcGridDropPosition = (
   };
 };
 
+export const saveUnpositionedDesktopIcons = (
+  setIconPositions: React.Dispatch<React.SetStateAction<IconPositions>>
+): void => {
+  const desktopIconGrid = document.querySelector<HTMLOListElement>("main > ol");
+
+  if (desktopIconGrid instanceof HTMLOListElement) {
+    const unPositionedIcons = [
+      ...desktopIconGrid.querySelectorAll("li"),
+    ].filter(
+      ({ style: { gridRowStart, gridColumnStart } }) =>
+        !gridRowStart || !gridColumnStart
+    );
+
+    if (unPositionedIcons.length > 0) {
+      const {
+        columnGap,
+        gridTemplateColumns,
+        gridTemplateRows,
+        paddingTop,
+        rowGap,
+      } = window.getComputedStyle(desktopIconGrid);
+      const [entryWidth] = gridTemplateColumns.split(" ");
+      const [entryHeight] = gridTemplateRows.split(" ");
+      const height = pxToNum(entryHeight) + pxToNum(rowGap);
+      const width = pxToNum(entryWidth) + pxToNum(columnGap);
+      const rowTopPadding = pxToNum(paddingTop);
+      const newIconPositions = Object.fromEntries(
+        unPositionedIcons.map((icon) => {
+          const { top, left } = icon.getBoundingClientRect() || {};
+          const button = icon.querySelector("button") as HTMLButtonElement;
+          let name = button?.getAttribute("aria-label") || button?.textContent;
+
+          if (button?.querySelector("img[src*=shortcut]")) {
+            name = `${name}${SHORTCUT_EXTENSION}`;
+          }
+
+          return [
+            name ? join(DESKTOP_PATH, name) : "",
+            {
+              gridColumnStart: Math.round(left / width) + 1,
+              gridRowStart: Math.round((top - rowTopPadding) / height) + 1,
+            },
+          ];
+        })
+      );
+
+      setIconPositions((currentIconPositions) => ({
+        ...currentIconPositions,
+        ...newIconPositions,
+      }));
+    }
+  }
+};
+
 export const updateIconPositionsIfEmpty = (
   url: string,
   gridElement: HTMLElement | null,
@@ -422,15 +511,17 @@ export const updateIconPositionsIfEmpty = (
 
     if (!iconPositions[entryUrl]) {
       const gridEntry = [...gridElement.children].find((element) =>
-        element.querySelector(`button[aria-label="${entry}"]`)
+        element.querySelector(
+          `button[aria-label="${entry.replace(SHORTCUT_EXTENSION, "")}"]`
+        )
       );
 
       if (gridEntry instanceof HTMLElement) {
         const { x, y, height, width } = gridEntry.getBoundingClientRect();
 
         newIconPositions[entryUrl] = calcGridDropPosition(gridElement, {
-          x: x - width,
-          y: y + height,
+          x: x + width / 2,
+          y: y + height / 2,
         });
       } else {
         const position = index + 1;
@@ -495,6 +586,38 @@ const calcGridPositionOffset = (
       };
 };
 
+export const getIteratedNames = (
+  fileEntries: string[],
+  directory: string,
+  iconPositions: IconPositions,
+  exists: (path: string) => Promise<boolean>
+): Promise<string[]> =>
+  Promise.all(
+    fileEntries.map(async (fileEntry) => {
+      let entryIteration = `${directory}/${fileEntry}`;
+
+      if (!iconPositions[entryIteration] || !(await exists(entryIteration))) {
+        return fileEntry;
+      }
+
+      let iteration = 0;
+
+      do {
+        iteration += 1;
+        entryIteration = `${directory}/${basename(
+          fileEntry,
+          extname(fileEntry)
+        )} (${iteration})${extname(fileEntry)}`;
+      } while (
+        iconPositions[entryIteration] &&
+        // eslint-disable-next-line no-await-in-loop
+        (await exists(entryIteration))
+      );
+
+      return basename(entryIteration);
+    })
+  );
+
 export const updateIconPositions = (
   directory: string,
   gridElement: HTMLElement | null,
@@ -507,14 +630,14 @@ export const updateIconPositions = (
 ): void => {
   if (!gridElement || draggedEntries.length === 0) return;
 
-  const currentIconPositions = updateIconPositionsIfEmpty(
+  const updatedIconPositions = updateIconPositionsIfEmpty(
     directory,
     gridElement,
     iconPositions,
     sortOrders
   );
   const gridDropPosition = calcGridDropPosition(gridElement, dragPosition);
-  const conflictingIcon = Object.entries(currentIconPositions).find(
+  const conflictingIcon = Object.entries(updatedIconPositions).find(
     ([, { gridColumnStart, gridRowStart }]) =>
       gridColumnStart === gridDropPosition.gridColumnStart &&
       gridRowStart === gridDropPosition.gridRowStart
@@ -529,7 +652,7 @@ export const updateIconPositions = (
       targetFile,
       ...draggedEntries.filter((entry) => entry !== targetFile),
     ];
-    const newIconPositions = Object.fromEntries(
+    const adjustIconPositions = Object.fromEntries(
       adjustDraggedEntries
         .map<[string, IconPosition]>((entryFile) => {
           const url = join(directory, entryFile);
@@ -541,7 +664,7 @@ export const updateIconPositions = (
               : calcGridPositionOffset(
                   url,
                   targetUrl,
-                  currentIconPositions,
+                  updatedIconPositions,
                   gridDropPosition,
                   adjustDraggedEntries,
                   gridElement
@@ -553,23 +676,28 @@ export const updateIconPositions = (
             gridColumnStart >= 1 && gridRowStart >= 1
         )
     );
+    const newIconPositions = Object.fromEntries(
+      Object.entries(adjustIconPositions).filter(
+        ([entryFile, { gridColumnStart, gridRowStart }]) =>
+          !Object.entries({
+            ...updatedIconPositions,
+            ...adjustIconPositions,
+          }).some(
+            ([
+              compareEntryFile,
+              {
+                gridColumnStart: compareGridColumnStart,
+                gridRowStart: compareGridRowStart,
+              },
+            ]) =>
+              entryFile !== compareEntryFile &&
+              gridColumnStart === compareGridColumnStart &&
+              gridRowStart === compareGridRowStart
+          )
+      )
+    );
 
-    setIconPositions({
-      ...currentIconPositions,
-      ...Object.fromEntries(
-        Object.entries(newIconPositions).filter(
-          ([, { gridColumnStart, gridRowStart }]) =>
-            !Object.values(currentIconPositions).some(
-              ({
-                gridColumnStart: currentGridColumnStart,
-                gridRowStart: currentRowColumnStart,
-              }) =>
-                gridColumnStart === currentGridColumnStart &&
-                gridRowStart === currentRowColumnStart
-            )
-        )
-      ),
-    });
+    setIconPositions({ ...updatedIconPositions, ...newIconPositions });
   };
 
   if (conflictingIcon) {
@@ -577,7 +705,7 @@ export const updateIconPositions = (
 
     exists(conflictingIconPath).then((pathExists) => {
       if (!pathExists) {
-        delete currentIconPositions[conflictingIconPath];
+        delete updatedIconPositions[conflictingIconPath];
         processIconMove();
       }
     });
@@ -667,13 +795,27 @@ export const getFormattedSize = (size = 0, asKB = false): string => {
   return `${size} bytes`;
 };
 
-export const getTZOffsetISOString = (): string => {
-  const date = new Date();
+let timezoneOffset: number;
 
-  return new Date(
-    date.getTime() - date.getTimezoneOffset() * 60000
-  ).toISOString();
+export const getTZOffsetISOString = (timestamp?: number): string => {
+  let time = timestamp;
+  // eslint-disable-next-line no-undef-init
+  let date: Date | undefined = undefined;
+
+  if (!time) {
+    date = new Date();
+    time = date.getTime();
+  }
+
+  if (typeof timezoneOffset !== "number") {
+    timezoneOffset = (date || new Date()).getTimezoneOffset() * 60000;
+  }
+
+  return new Date(time - timezoneOffset).toISOString();
 };
+
+export const LOCAL_HOST = new Set(["127.0.0.1", "localhost"]);
+export const GOOGLE_SEARCH_QUERY = "https://www.google.com/search?igu=1&q=";
 
 export const getUrlOrSearch = async (input: string): Promise<URL> => {
   const isIpfs = input.startsWith("ipfs://");
@@ -738,7 +880,7 @@ export const haltEvent = (
     | React.MouseEvent
 ): void => {
   try {
-    if (event.cancelable) {
+    if (event?.cancelable) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -805,6 +947,8 @@ export const getMimeType = (url: string, ext?: string): string => {
     case ".cur":
     case ".ico":
       return "image/vnd.microsoft.icon";
+    case ".flac":
+      return "audio/x-flac";
     case ".cache":
     case ".jpg":
     case ".jpeg":
@@ -820,6 +964,8 @@ export const getMimeType = (url: string, ext?: string): string => {
     case ".m3u":
     case ".m3u8":
       return "application/x-mpegURL";
+    case ".m4a":
+      return "audio/m4a";
     case ".m4v":
     case ".mkv":
     case ".mov":
@@ -850,8 +996,9 @@ export const getMimeType = (url: string, ext?: string): string => {
       return "image/webp";
     case ".xml":
       return "application/xml";
-    case ".wsz":
     case ".jsdos":
+    case ".pk3":
+    case ".wsz":
     case ".zip":
       return "application/zip";
     default:
@@ -867,6 +1014,22 @@ export const isDynamicIcon = (icon?: string): boolean =>
 const getPreloadedLinks = (): HTMLLinkElement[] => [
   ...document.querySelectorAll<HTMLLinkElement>("link[rel=preload]"),
 ];
+
+let HAS_MODULE_PRELOAD_SUPPORT = false;
+
+const supportsModulePreload = (): boolean => {
+  if (HAS_MODULE_PRELOAD_SUPPORT) return true;
+
+  try {
+    HAS_MODULE_PRELOAD_SUPPORT = Boolean(
+      document.createElement("link").relList?.supports?.("modulepreload")
+    );
+  } catch {
+    // Ignore failure to check for modulepreload support
+  }
+
+  return HAS_MODULE_PRELOAD_SUPPORT;
+};
 
 let HAS_WEBP_SUPPORT = false;
 
@@ -958,6 +1121,11 @@ export const preloadLibs = (libs: string[] = []): void => {
       case ".html":
         link.rel = "prerender";
         break;
+      case ".js":
+        if (supportsModulePreload()) {
+          link.rel = "modulepreload";
+        }
+        break;
       case ".json":
       case ".wasm":
         link.as = "fetch";
@@ -1026,3 +1194,25 @@ export const toSorted = <T>(
   array: T[],
   compareFn?: (a: T, b: T) => number
 ): T[] => [...array].sort(compareFn);
+
+export const notFound = (resource: string): void =>
+  // eslint-disable-next-line no-alert
+  alert(`Can't find '${resource}'. Check the spelling and try again.`);
+
+export const shouldCaptureDragImage = (
+  entryCount: number,
+  isDesktop = false
+): boolean => entryCount > 1 || (!isDesktop && entryCount === 1 && isSafari());
+
+export const maybeRequestIdleCallback = (
+  callback: () => void | Promise<void>
+): void => {
+  if (
+    "requestIdleCallback" in window &&
+    typeof window.requestIdleCallback === "function"
+  ) {
+    requestIdleCallback(callback);
+  } else {
+    callback();
+  }
+};

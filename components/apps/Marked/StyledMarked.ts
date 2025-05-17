@@ -121,8 +121,8 @@ const StyledMarked = styled.div`
     pre {
       background-color: #f6f8fa;
       border-radius: 3px;
-      font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier,
-        monospace;
+      font-family:
+        SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
       font-size: 85%;
       line-height: 1.45;
       overflow: auto;
@@ -130,7 +130,7 @@ const StyledMarked = styled.div`
     }
 
     code:not([class]) {
-      background-color: rgba(27, 31, 35, 5%);
+      background-color: rgb(27 31 35 / 5%);
       border-radius: 3px;
       font-size: 85%;
       margin: 0;

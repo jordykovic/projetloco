@@ -9,13 +9,13 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
-import { m as motion } from "framer-motion";
-import ColumnRow from "components/system/Files/FileEntry/ColumnRow";
+import { m as motion } from "motion/react";
 import { type Columns } from "components/system/Files/FileManager/Columns/constants";
 import StyledFigure from "components/system/Files/FileEntry/StyledFigure";
 import SubIcons from "components/system/Files/FileEntry/SubIcons";
 import {
   getCachedIconUrl,
+  getCachedShortcut,
   getDateModified,
   getFileType,
   getTextWrapData,
@@ -57,16 +57,22 @@ import {
 import {
   blobToBase64,
   bufferToUrl,
+  fetchBlob,
   getExtension,
   getFormattedSize,
   getHtmlToImage,
   hasFinePointer,
   isCanvasDrawn,
   isYouTubeUrl,
+  preloadImage,
 } from "utils/functions";
 import { spotlightEffect } from "utils/spotlightEffect";
 import { useIsVisible } from "hooks/useIsVisible";
 import { UNKNOWN_SIZE } from "contexts/fileSystem/core";
+
+const ColumnRow = dynamic(
+  () => import("components/system/Files/FileEntry/ColumnRow")
+);
 
 const Down = dynamic(() =>
   import("components/apps/FileExplorer/NavigationIcons").then((mod) => mod.Down)
@@ -80,7 +86,7 @@ type FileEntryProps = {
   columns?: Columns;
   fileActions: FileActions;
   fileManagerId?: string;
-  fileManagerRef: React.MutableRefObject<HTMLOListElement | null>;
+  fileManagerRef: React.RefObject<HTMLOListElement | null>;
   focusFunctions: FocusEntryFunctions;
   focusedEntries: string[];
   hasNewFolderIcon?: boolean;
@@ -103,11 +109,10 @@ const truncateName = (
   name: string,
   fontSize: string,
   fontFamily: string,
-  maxWidth: number,
-  alwaysShowPossibleLines = false
+  maxWidth: number
 ): string => {
   const nonBreakingName = name.replace(/-/g, NON_BREAKING_HYPHEN);
-  const { lines } = getTextWrapData(
+  const { lines, truncatedText } = getTextWrapData(
     nonBreakingName,
     fontSize,
     fontFamily,
@@ -115,10 +120,7 @@ const truncateName = (
   );
 
   if (lines.length > 2) {
-    const text =
-      alwaysShowPossibleLines || name.includes(" ")
-        ? lines.slice(0, 2).join("")
-        : lines[0];
+    const text = name.includes(" ") ? truncatedText : lines[0];
 
     return `${text.slice(0, -3).trim()}...`;
   }
@@ -170,6 +172,7 @@ const FileEntry: FC<FileEntryProps> = ({
     fs,
     mkdirRecursive,
     pasteList,
+    readdir,
     stat,
     updateFolder,
     writeFile,
@@ -182,7 +185,7 @@ const FileEntry: FC<FileEntryProps> = ({
     () => (isDirectory ? "" : getExtension(url)),
     [isDirectory, url]
   );
-  const isYTUrl = useMemo(() => isYouTubeUrl(url), [url]);
+  const isYTUrl = useMemo(() => Boolean(url) && isYouTubeUrl(url), [url]);
   const isDynamicIcon = useMemo(
     () =>
       IMAGE_FILE_EXTENSIONS.has(urlExt) ||
@@ -225,15 +228,14 @@ const FileEntry: FC<FileEntryProps> = ({
         formats.systemFont,
         sizes.fileEntry[
           listView ? "maxListTextDisplayWidth" : "maxIconTextDisplayWidth"
-        ],
-        !isDesktop
+        ]
       ),
-    [formats.systemFont, isDesktop, listView, name, sizes.fileEntry]
+    [formats.systemFont, listView, name, sizes.fileEntry]
   );
   const iconRef = useRef<HTMLImageElement | null>(null);
   const isIconCached = useRef(false);
   const isDynamicIconLoaded = useRef(false);
-  const getIconAbortController = useRef<AbortController>();
+  const getIconAbortController = useRef<AbortController>(undefined);
   const createTooltip = useCallback(async (): Promise<string> => {
     if (isDirectory) return "";
 
@@ -313,6 +315,32 @@ const FileEntry: FC<FileEntryProps> = ({
         : 0,
     [columns, showColumn, sizes.fileManager.detailsStartPadding]
   );
+  const preloadedImages = useRef(false);
+  const preloadImages = useCallback(() => {
+    if (preloadedImages.current) return;
+    preloadedImages.current = true;
+
+    readdir(path).then((files) =>
+      files
+        .map((file) => getCachedShortcut(join(path, file)) || {})
+        .forEach(({ icon: image }) => image && preloadImage(image))
+    );
+  }, [path, readdir]);
+  const onMouseOverButton = useCallback(() => {
+    if (listView && isDirectory) preloadImages();
+    createTooltip().then(setTooltip);
+  }, [createTooltip, isDirectory, listView, preloadImages]);
+  const lockWidthStyle = useMemo(
+    () => ({ maxWidth: columnWidth, minWidth: columnWidth }),
+    [columnWidth]
+  );
+  const renameFile = useCallback(
+    (origPath: string, newName?: string) => {
+      fileActions.renameFile(origPath, newName);
+      setRenaming("");
+    },
+    [fileActions, setRenaming]
+  );
 
   useEffect(() => {
     if (!isLoadingFileManager && isVisible && !isIconCached.current) {
@@ -355,7 +383,7 @@ const FileEntry: FC<FileEntryProps> = ({
                   generatedIcon = iconRef.current.currentSrc;
                 } else if (iconRef.current.currentSrc.startsWith("blob:")) {
                   generatedIcon = await blobToBase64(
-                    await (await fetch(iconRef.current.currentSrc)).blob()
+                    await fetchBlob(iconRef.current.currentSrc)
                   );
                 } else {
                   const { clientHeight, clientWidth } = iconRef.current;
@@ -551,7 +579,7 @@ const FileEntry: FC<FileEntryProps> = ({
       <Button
         ref={buttonRef}
         aria-label={name}
-        onMouseOver={() => createTooltip().then(setTooltip)}
+        onMouseOverCapture={onMouseOverButton}
         title={tooltip}
         {...(listView && { ...LIST_VIEW_ANIMATION, as: motion.button })}
         {...useDoubleClick(doubleClickHandler, listView)}
@@ -577,11 +605,7 @@ const FileEntry: FC<FileEntryProps> = ({
             [listView]
           )}
           $renaming={renaming}
-          style={
-            showColumn
-              ? { maxWidth: columnWidth, minWidth: columnWidth }
-              : undefined
-          }
+          style={showColumn ? lockWidthStyle : undefined}
           {...(isHeading && {
             "aria-level": 1,
             role: "heading",
@@ -591,12 +615,12 @@ const FileEntry: FC<FileEntryProps> = ({
             ref={iconRef}
             $eager={loadIconImmediately}
             $moving={pasteList[path] === "move"}
-            alt={name}
+            alt=""
             src={icon}
             {...FileEntryIconSize[view]}
           />
           <SubIcons
-            alt={name}
+            alt=""
             icon={icon}
             isDesktop={isDesktop}
             showShortcutIcon={Boolean(hideShortcutIcon || stats.systemShortcut)}
@@ -608,16 +632,14 @@ const FileEntry: FC<FileEntryProps> = ({
               isDesktop={isDesktop}
               name={name}
               path={path}
-              renameFile={(origPath, newName) => {
-                fileActions.renameFile(origPath, newName);
-                setRenaming("");
-              }}
+              renameFile={renameFile}
               setRenaming={setRenaming}
               view={view}
             />
           ) : (
             <figcaption>
-              {!isOnlyFocusedEntry || name.length === truncatedName.length
+              {!showColumn &&
+              (!isOnlyFocusedEntry || name.length === truncatedName.length)
                 ? truncatedName
                 : name}
             </figcaption>

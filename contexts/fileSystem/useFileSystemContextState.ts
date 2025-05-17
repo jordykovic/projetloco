@@ -18,8 +18,12 @@ import {
   removeInvalidFilenameCharacters,
 } from "components/system/Files/FileManager/functions";
 import { type NewPath } from "components/system/Files/FileManager/useFolder";
-import { getFileSystemHandles } from "contexts/fileSystem/core";
-import { isMountedFolder } from "contexts/fileSystem/functions";
+import {
+  getFileSystemHandles,
+  hasIndexedDB,
+  isMountedFolder,
+  KEYVAL_DB,
+} from "contexts/fileSystem/core";
 import useAsyncFs, {
   type AsyncFS,
   type EmscriptenFS,
@@ -36,6 +40,28 @@ import {
   TRANSITIONS_IN_MILLISECONDS,
 } from "utils/constants";
 import { bufferToBlob, getExtension, getMimeType } from "utils/functions";
+
+export type FileSystemObserver = {
+  disconnect: () => void;
+  observe: (
+    handle: FileSystemDirectoryHandle,
+    options: { recursive: boolean }
+  ) => Promise<void>;
+};
+
+type FileSystemChangeRecord = {
+  relativePathComponents: string[];
+  relativePathMovedFrom: string[] | null;
+  type: "appeared" | "disappeared" | "moved";
+};
+
+declare global {
+  interface Window {
+    FileSystemObserver: new (
+      callback: (records: FileSystemChangeRecord[]) => void
+    ) => FileSystemObserver;
+  }
+}
 
 type FilePasteOperations = Record<string, "copy" | "move">;
 
@@ -64,7 +90,9 @@ type FileSystemContextState = AsyncFS & {
   createPath: (
     name: string,
     directory: string,
-    buffer?: Buffer
+    buffer?: Buffer,
+    iteration?: number,
+    overwrite?: boolean
   ) => Promise<string>;
   deletePath: (path: string) => Promise<boolean>;
   fs?: FSModule;
@@ -79,6 +107,7 @@ type FileSystemContextState = AsyncFS & {
   pasteList: FilePasteOperations;
   removeFsWatcher: (folder: string, updateFiles: UpdateFiles) => void;
   rootFs?: RootFileSystem;
+  setPasteList: React.Dispatch<React.SetStateAction<FilePasteOperations>>;
   unMapFs: (directory: string, hasNoHandle?: boolean) => Promise<void>;
   unMountFs: (url: string) => void;
   updateFolder: (
@@ -300,13 +329,55 @@ const useFileSystemContextState = (): FileSystemContextState => {
               const mappedName =
                 removeInvalidFilenameCharacters(handle.name).trim() ||
                 (systemDirectory ? "" : DEFAULT_MAPPED_NAME);
+              const mappedPath = join(directory, mappedName);
 
-              rootFs?.mount?.(join(directory, mappedName), newFs);
+              rootFs?.mount?.(mappedPath, newFs);
               resolve(systemDirectory ? directory : mappedName);
+
+              let observer: FileSystemObserver | undefined;
+
+              if ("FileSystemObserver" in window) {
+                observer = new window.FileSystemObserver(([record]) => {
+                  const {
+                    relativePathComponents,
+                    relativePathMovedFrom,
+                    type,
+                  } = record;
+                  let newFile = "";
+                  let oldFile = "";
+
+                  if (type === "appeared") {
+                    newFile =
+                      relativePathComponents[relativePathComponents.length - 1];
+                  } else if (type === "disappeared") {
+                    oldFile =
+                      relativePathComponents[relativePathComponents.length - 1];
+                  } else if (relativePathMovedFrom && type === "moved") {
+                    oldFile =
+                      relativePathMovedFrom[relativePathMovedFrom.length - 1];
+                    newFile =
+                      relativePathComponents[relativePathComponents.length - 1];
+                  }
+
+                  if (newFile || oldFile) {
+                    updateFolder(
+                      join(mappedPath, ...relativePathComponents.slice(0, -1)),
+                      newFile,
+                      oldFile
+                    );
+                  }
+                });
+
+                try {
+                  observer.observe(handle, { recursive: true });
+                } catch {
+                  observer = undefined;
+                }
+              }
 
               import("contexts/fileSystem/functions").then(
                 ({ addFileSystemHandle }) =>
-                  addFileSystemHandle(directory, handle, mappedName)
+                  addFileSystemHandle(directory, handle, mappedName, observer)
               );
             });
           });
@@ -315,7 +386,7 @@ const useFileSystemContextState = (): FileSystemContextState => {
         }
       });
     },
-    [rootFs]
+    [rootFs, updateFolder]
   );
   const mountFs = useCallback(
     async (url: string): Promise<void> => {
@@ -370,12 +441,18 @@ const useFileSystemContextState = (): FileSystemContextState => {
   );
   const { openTransferDialog } = useTransferDialog();
   const addFile = useCallback(
-    (directory: string, callback: NewPath): Promise<string[]> =>
+    (
+      directory: string,
+      callback: NewPath,
+      accept?: string,
+      multiple = true
+    ): Promise<string[]> =>
       new Promise((resolve) => {
         const fileInput = document.createElement("input");
 
         fileInput.type = "file";
-        fileInput.multiple = true;
+        fileInput.multiple = multiple;
+        if (accept) fileInput.accept = accept;
         fileInput.setAttribute("style", "display: none");
         fileInput.addEventListener(
           "change",
@@ -468,8 +545,11 @@ const useFileSystemContextState = (): FileSystemContextState => {
       name: string,
       directory: string,
       buffer?: Buffer,
-      iteration = 0
+      iteration = 0,
+      overwrite = false
     ): Promise<string> => {
+      if (!name.trim()) return "";
+
       const isInternal = !buffer && isAbsolute(name);
       const baseName = isInternal ? basename(name) : name;
       const uniqueName = iteration
@@ -514,7 +594,7 @@ const useFileSystemContextState = (): FileSystemContextState => {
         try {
           if (
             buffer
-              ? await writeFile(fullNewPath, buffer)
+              ? await writeFile(fullNewPath, buffer, overwrite)
               : await mkdir(fullNewPath)
           ) {
             return uniqueName;
@@ -539,25 +619,27 @@ const useFileSystemContextState = (): FileSystemContextState => {
 
         let mappedOntoDesktop = false;
 
-        await Promise.all(
-          Object.entries(await getFileSystemHandles()).map(
-            async ([handleDirectory, handle]) => {
-              if (!(await exists(handleDirectory))) {
-                try {
-                  const mapDirectory = SYSTEM_DIRECTORIES.has(handleDirectory)
-                    ? handleDirectory
-                    : dirname(handleDirectory);
+        if (await hasIndexedDB(KEYVAL_DB)) {
+          await Promise.all(
+            Object.entries(await getFileSystemHandles()).map(
+              async ([handleDirectory, handle]) => {
+                if (!(await exists(handleDirectory))) {
+                  try {
+                    const mapDirectory = SYSTEM_DIRECTORIES.has(handleDirectory)
+                      ? handleDirectory
+                      : dirname(handleDirectory);
 
-                  await mapFs(mapDirectory, handle);
+                    await mapFs(mapDirectory, handle);
 
-                  if (mapDirectory === DESKTOP_PATH) mappedOntoDesktop = true;
-                } catch {
-                  // Ignore failure
+                    if (mapDirectory === DESKTOP_PATH) mappedOntoDesktop = true;
+                  } catch {
+                    // Ignore failure
+                  }
                 }
               }
-            }
-          )
-        );
+            )
+          );
+        }
 
         if (mappedOntoDesktop) updateFolder(DESKTOP_PATH);
       };
@@ -579,6 +661,7 @@ const useFileSystemContextState = (): FileSystemContextState => {
     moveEntries,
     pasteList,
     removeFsWatcher,
+    setPasteList,
     unMapFs,
     unMountFs,
     updateFolder,

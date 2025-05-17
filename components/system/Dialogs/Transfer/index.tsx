@@ -26,11 +26,11 @@ const Transfer: FC<ComponentProcessProps> = ({ id }) => {
     processes: { [id]: process } = {},
     title,
   } = useProcesses();
-  const { closing, fileReaders, url } = process || {};
+  const { closing, fileReaders, operation: baseOperation, url } = process || {};
   const [currentTransfer, setCurrentTransfer] = useState<[string, File]>();
   const [cd = "", { name = "" } = {}] = currentTransfer || [];
   const [progress, setProgress] = useState<number>(0);
-  const currentOperation = useRef<Operation | undefined>();
+  const currentOperation = useRef<Operation>(undefined);
   const actionName = useMemo(() => {
     if (closing || !process) return currentOperation.current;
 
@@ -39,12 +39,12 @@ const Transfer: FC<ComponentProcessProps> = ({ id }) => {
       (fileReaders as ObjectReaders)?.[0] || {};
 
     if (objectOperation) operation = objectOperation;
-    else if (url && !fileReaders) operation = "Extracting";
+    else if (url && !fileReaders) operation = baseOperation || "Extracting";
 
     currentOperation.current = operation;
 
     return operation;
-  }, [closing, fileReaders, process, url]);
+  }, [baseOperation, closing, fileReaders, process, url]);
   const processing = useRef(false);
   const completeTransfer = useCallback(() => {
     processing.current = false;

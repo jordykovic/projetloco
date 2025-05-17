@@ -13,8 +13,11 @@ const useRuffle = ({
   setLoading,
   url,
 }: ContainerHookProps): void => {
-  const { linkElement, processes: { [id]: { libs = [] } = {} } = {} } =
-    useProcesses();
+  const {
+    argument,
+    linkElement,
+    processes: { [id]: { libs = [] } = {} } = {},
+  } = useProcesses();
   const [player, setPlayer] = useState<RufflePlayer>();
   const { appendFileToTitle } = useTitle(id);
   const { readFile } = useFileSystem();
@@ -40,6 +43,7 @@ const useRuffle = ({
           autoplay: "on",
           backgroundColor: "#000000",
           letterbox: "on",
+          menu: false,
           polyfills: false,
           preloader: false,
           unmuteOverlay: "hidden",
@@ -59,10 +63,21 @@ const useRuffle = ({
     if (containerRef.current && player) {
       containerRef.current.append(player);
       linkElement(id, "peekElement", player);
+      argument(id, "play", () => {
+        player.play();
+        argument(id, "paused", false);
+      });
+      argument(id, "pause", () => {
+        player.pause();
+        argument(id, "paused", true);
+      });
+      player.addEventListener("click", () =>
+        argument(id, "paused", !player?.isPlaying)
+      );
     }
 
     return () => player?.remove();
-  }, [containerRef, id, linkElement, player]);
+  }, [argument, containerRef, id, linkElement, player]);
 
   useEffect(() => {
     if (containerRef.current && player && url) loadFlash();

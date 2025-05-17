@@ -1,5 +1,7 @@
 import styled from "styled-components";
 
+const CONTROL_BAR_HEIGHT = 30;
+
 const StyledVideoPlayer = styled.div`
   display: flex;
   height: 100%;
@@ -14,8 +16,9 @@ const StyledVideoPlayer = styled.div`
     }
 
     .vjs-control-bar {
-      background-color: rgb(240, 240, 240);
-      padding: 0 1;
+      background-color: rgb(240 240 240);
+      padding: 0 1px;
+      z-index: 9999;
 
       &:not(.no-interaction) {
         display: flex !important;
@@ -37,15 +40,15 @@ const StyledVideoPlayer = styled.div`
     }
 
     .vjs-button {
-      color: rgb(116, 116, 116);
+      color: rgb(116 116 116);
       height: 28px;
       position: relative;
       width: 28px;
       z-index: 0;
 
       &::after {
-        background-color: rgb(225, 225, 225);
-        border: 1px solid rgb(173, 173, 173);
+        background-color: rgb(225 225 225);
+        border: 1px solid rgb(173 173 173);
         content: "";
         height: calc(100% - 4px);
         left: 0;
@@ -58,15 +61,15 @@ const StyledVideoPlayer = styled.div`
 
       &:hover {
         &::after {
-          background-color: rgb(229, 241, 251);
-          border-color: rgb(0, 120, 215);
+          background-color: rgb(229 241 251);
+          border-color: rgb(0 120 215);
         }
       }
 
       &:active {
         &::after {
-          background-color: rgb(204, 228, 247);
-          border-color: rgb(0, 84, 153);
+          background-color: rgb(204 228 247);
+          border-color: rgb(0 84 153);
         }
       }
     }
@@ -103,8 +106,8 @@ const StyledVideoPlayer = styled.div`
       div {
         background: linear-gradient(
           180deg,
-          rgb(189, 189, 189) 0%,
-          rgb(219, 219, 219) 100%
+          rgb(189 189 189) 0%,
+          rgb(219 219 219) 100%
         );
         border-radius: 5px;
       }
@@ -113,15 +116,15 @@ const StyledVideoPlayer = styled.div`
     .vjs-play-progress {
       background: linear-gradient(
         180deg,
-        rgb(44, 137, 224) 0%,
-        rgb(40, 125, 204) 100%
+        rgb(44 137 224) 0%,
+        rgb(40 125 204) 100%
       );
       border-radius: 5px;
 
       &::before {
-        color: rgb(237, 237, 237);
-        text-shadow: 1px 2px 3px rgb(160, 160, 160);
-        -webkit-text-stroke: 1px rgba(164, 164, 164, 80%);
+        color: rgb(237 237 237);
+        text-shadow: 1px 2px 3px rgb(160 160 160);
+        -webkit-text-stroke: 1px rgb(164 164 164 / 80%);
         top: 1px;
       }
     }
@@ -133,7 +136,7 @@ const StyledVideoPlayer = styled.div`
     }
 
     .vjs-volume-control {
-      background-color: rgb(240, 240, 240);
+      background-color: rgb(240 240 240);
       border-radius: 5px 5px 0 0;
       left: -28px !important;
       position: relative;
@@ -146,14 +149,14 @@ const StyledVideoPlayer = styled.div`
       .vjs-volume-level {
         background: linear-gradient(
           180deg,
-          rgb(247, 76, 100) 0%,
-          rgb(125, 210, 125) 50%
+          rgb(247 76 100) 0%,
+          rgb(125 210 125) 50%
         );
         border-radius: 5px;
-        color: rgb(237, 237, 237);
+        color: rgb(237 237 237);
         font-size: 1.5em;
-        text-shadow: 1px 2px 3px rgb(160, 160, 160);
-        -webkit-text-stroke: 1px rgba(164, 164, 164, 80%);
+        text-shadow: 1px 2px 3px rgb(160 160 160);
+        -webkit-text-stroke: 1px rgb(164 164 164 / 80%);
       }
     }
 
@@ -188,8 +191,16 @@ const StyledVideoPlayer = styled.div`
       background-image: url("/System/Icons/48x48/vlc.webp");
       background-position: center calc(50% - 15px);
       background-repeat: no-repeat;
-      padding-bottom: 30px;
+      padding-bottom: ${CONTROL_BAR_HEIGHT}px;
     }
+  }
+
+  canvas {
+    height: calc(100% - ${CONTROL_BAR_HEIGHT}px);
+    object-fit: contain;
+    position: absolute;
+    visibility: hidden;
+    width: 100%;
   }
 `;
 

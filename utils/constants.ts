@@ -82,6 +82,7 @@ export const HEIF_IMAGE_FORMATS = new Set([
   ".heics",
   ".heif",
   ".heifs",
+  ".hif",
   ".avci",
   ".avcs",
 ]);
@@ -96,14 +97,10 @@ export const TIFF_IMAGE_FORMATS = new Set([
 
 export const CLIPBOARD_FILE_EXTENSIONS = new Set([".jpeg", ".jpg", ".png"]);
 
-export const IMAGE_FILE_EXTENSIONS = new Set([
-  ...HEIF_IMAGE_FORMATS,
-  ...TIFF_IMAGE_FORMATS,
-  ".ani",
+export const NATIVE_IMAGE_FORMATS = new Set([
   ".apng",
   ".avif",
   ".bmp",
-  ".cur",
   ".gif",
   ".ico",
   ".jfif",
@@ -111,14 +108,22 @@ export const IMAGE_FILE_EXTENSIONS = new Set([
   ".jpe",
   ".jpeg",
   ".jpg",
-  ".jxl",
   ".pjp",
   ".pjpeg",
   ".png",
   ".svg",
-  ".qoi",
   ".webp",
   ".xbm",
+]);
+
+export const IMAGE_FILE_EXTENSIONS = new Set([
+  ...NATIVE_IMAGE_FORMATS,
+  ...HEIF_IMAGE_FORMATS,
+  ...TIFF_IMAGE_FORMATS,
+  ".ani",
+  ".cur",
+  ".jxl",
+  ".qoi",
 ]);
 
 export const UNSUPPORTED_SLIDESHOW_EXTENSIONS = new Set([
@@ -164,7 +169,9 @@ export const MILLISECONDS_IN_MINUTE = 60000;
 
 export const MILLISECONDS_IN_DAY = 86400000;
 
-export const MOUNTABLE_EXTENSIONS = new Set([".iso", ".jsdos", ".wsz", ".zip"]);
+export const ZIP_EXTENSIONS = new Set([".jsdos", ".pk3", ".wsz", ".zip"]);
+
+export const MOUNTABLE_EXTENSIONS = new Set([".iso", ...ZIP_EXTENSIONS]);
 
 export const SPREADSHEET_FORMATS = [
   ".csv",
@@ -205,6 +212,10 @@ export const DESKTOP_PATH = `${HOME}/Desktop`;
 
 export const START_MENU_PATH = `${HOME}/Start Menu`;
 
+export const AI_TITLE = "Talos";
+
+export const AI_WINDOW_ID = "ai-chat-window";
+
 export const SYSTEM_SHORTCUT_DIRECTORIES = new Set([DESKTOP_PATH]);
 
 export const TRANSITIONS_IN_MILLISECONDS = {
@@ -232,11 +243,21 @@ export const DEFAULT_INTERSECTION_OPTIONS: IntersectionObserverInit = {
   threshold: 0,
 };
 
-export const AUDIO_FILE_EXTENSIONS = new Set([".aac", ".oga", ".wav"]);
+export const AUDIO_FILE_EXTENSIONS = new Set([
+  ".aac",
+  ".flac",
+  ".m4a",
+  ".oga",
+  ".wav",
+]);
 
 export const AUDIO_PLAYLIST_EXTENSIONS = new Set([".asx", ".m3u", ".pls"]);
 
+export const DECODED_VIDEO_FILE_EXTENSIONS = new Set([".avi", ".divx"]);
+
 export const VIDEO_FILE_EXTENSIONS = new Set([
+  ".3gp",
+  ".f4v",
   ".m4v",
   ".mkv",
   ".mov",
@@ -334,6 +355,8 @@ export const SUPPORTED_ICON_SIZES = [16, 32, 48, 96, 144];
 
 export const MAX_ICON_SIZE = 144;
 
+export const MAX_THUMBNAIL_FILE_SIZE = 1048576; // 1 MB
+
 export const DEFAULT_TEXT_FILE_SAVE_PATH = `${DESKTOP_PATH}/Untitled.txt`;
 
 export const DEFAULT_SCROLLBAR_WIDTH = 17;
@@ -362,7 +385,7 @@ export const BASE_ZIP_CONFIG: AsyncZipOptions = {
 export const HIGH_PRIORITY_REQUEST = { priority: "high" } as RequestInit;
 
 export const HIGH_PRIORITY_ELEMENT = {
-  fetchpriority: "high",
+  fetchPriority: "high",
 } as React.HTMLAttributes<HTMLElement>;
 
 export const DISBALE_AUTO_INPUT_FEATURES = {
@@ -371,3 +394,5 @@ export const DISBALE_AUTO_INPUT_FEATURES = {
   autoCorrect: "off",
   spellCheck: false,
 };
+
+export const MAX_ZINDEX = 2147483647;

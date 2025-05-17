@@ -4,26 +4,23 @@
 
 ### High Priority
 
+- 3rd Party App Support
 - Accessibility (Structure & Markup)
-- Screen Savers (.scr)
-  - [Pipes](https://github.com/1j01/pipes)
-  - [3D Maze](https://github.com/ibid-11962/Windows-95-3D-Maze-Screensaver)
-  - [3D FlowerBox](https://github.com/kevin-shannon/3D-FlowerBox)
-  - [After Dark](https://www.bryanbraun.com/after-dark-css/)
-  - [Hackers](https://simone.computer/#/webdesktops) (Shows when site is inactive)
-  - [Bouncing DVD Logo](https://www.bouncingdvdlogo.com/)
-  - [Drift](https://github.com/sandydoo/flux)
 - Add my old personal website
   - [http://surf.to/misc](https://web.archive.org/web/20050826192118if_/http://surf.to:80/misc)
+- Screen Savers (.scr)
+  - [After Dark](https://www.bryanbraun.com/after-dark-css/)
+  - [Bouncing DVD Logo](https://www.bouncingdvdlogo.com/)
+  - [Drift](https://github.com/sandydoo/flux)
+  - [Mystify](https://codepen.io/chrissimmons/pen/rWNJRp)
+  - [Johnny Castaway](https://github.com/xesf/castaway)
 - Progressive Web App
   - Offline
     - [next-offline](https://github.com/hanford/next-offline)
   - Service Worker (Firewall)
     - [Mock Service Worker](https://github.com/mswjs/msw)
-- System Tray Icons
 - Light Windows 10 Theme
   - [prefers-color-scheme](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme)
-- Single Click Window Icon Opens Context Menu
 
 ### Medium Priority
 
@@ -31,19 +28,22 @@
 - Virtual Assistant
   - [ClippyJS](https://github.com/pi0/clippyjs)
   - AI Powered
+    - [wllama](https://github.com/ngxson/wllama)
     - [Whisper WASM](https://github.com/ggerganov/whisper.cpp/tree/master/examples/talk.wasm)
     - TTS
       - [Coqui.ai](https://github.com/coqui-ai/tts)
-      - [speak.js](https://github.com/mtttmpl/speak-js)
+      - speak.js ([1](https://github.com/kripken/speak.js), [2](https://github.com/mtttmpl/speak-js))
     - [Transformers.js](https://xenova.github.io/transformers.js/)
-- 3rd Party App Support
+- System Tray Icons
 - Email App
   - Open SMTP Server
+  - [openpgpjs](https://github.com/openpgpjs/openpgpjs)
 - Task Manager
   - [stats.js](https://github.com/mrdoob/stats.js)
 - Batch File Support
 - Compress Images via Context Menu
   - [Squoosh](https://github.com/GoogleChromeLabs/squoosh) ([lib](https://www.npmjs.com/package/@squoosh/lib))
+    - [Squish](https://github.com/addyosmani/squish)
   - [wasm-vips](https://github.com/kleisauke/wasm-vips)
   - [SVGO](https://github.com/svg/svgo)
 - Set WOFF/TTF as System Font
@@ -63,6 +63,8 @@
 - Fancy Drag Zones for Windows
 - Calculator
   - [MCalculator](https://github.com/muzam1l/mcalculator)
+- Canvas Rendering
+  - [Skia Canvas](https://skia-canvas.org/)
 
 ## Features
 
@@ -107,6 +109,7 @@
 
 - [native-file-system-adapter](https://github.com/jimmywarting/native-file-system-adapter)
 - [WebDAV](https://github.com/perry-mitchell/webdav-client)
+- [harextract](https://github.com/JC3/harextract)
 
 ### File Information
 
@@ -122,6 +125,7 @@
   - [WebGPUReport.org](https://github.com/webgpu/webgpureport.org)
 - Fonts
   - [Local Font Access API](https://developer.chrome.com/docs/capabilities/web-apis/local-fonts)
+  - [Font Parser](https://www.antvaset.com/font-parser)
 - React
   - [DevTools Inline](https://www.npmjs.com/package/react-devtools-inline)
 - Benchmarks
@@ -154,6 +158,7 @@
 - Waveforms
   - [AudioMass](https://github.com/pkalogiros/audiomass)
   - [peaks.js](https://github.com/bbc/peaks.js)
+  - [wavesurfer.js](https://github.com/katspaugh/wavesurfer.js)
 - [Meyda](https://meyda.js.org/)
 - [Quiet.js](https://github.com/quiet/quiet-js/)
 
@@ -182,8 +187,10 @@
 ### Document/Book Viewer
 
 - [WebODF](https://webodf.org/)
-- [docx2html](https://github.com/lalalic/docx2html)
-- [Pandoc](https://github.com/jgm/pandoc)
+- DOCX
+  - [docx2html](https://github.com/lalalic/docx2html)
+  - [docx](https://github.com/dolanmiu/docx)
+- [Pandoc](https://github.com/tweag/pandoc-wasm)
 - [gdal3.js](https://github.com/bugra9/gdal3.js)
 - [Epub.js](https://github.com/futurepress/epub.js/)
 - Barcode / QR
@@ -194,7 +201,6 @@
 ### Video Player
 
 - Codecs
-  - [codecbox.js](https://github.com/duanyao/codecbox.js)
   - [libav.js](https://github.com/Yahweasel/libav.js/)
   - [bestmediaplayer](https://github.com/bestmediaplayer/mediaplayer)
   - [ogv.js](https://github.com/bvibber/ogv.js)
@@ -226,6 +232,10 @@
 - [Palm](https://github.com/cloudpilot-emu/cloudpilot-emu)
 - [Commodore 64](https://github.com/mborgbrant/c64js)
 - [RetroArch](https://github.com/BinBashBanana/webretro)
+
+### Microkernel
+
+- [exaequOS](https://www.exaequos.com/)
 
 ### Messaging Protocols
 
@@ -286,6 +296,7 @@
 - [fireworks.js](https://github.com/crashmax-dev/fireworks-js)
 - [Cursor Effects](https://tholman.com/cursor-effects/)
 - [Bobby Blue-Eyes](https://www.derschmale.com/lab/doodles/blueeyes/build/)
+- [CODEF Demoscene Gallery](https://www.wab.com/)
 
 ## Games
 
@@ -293,7 +304,9 @@
   - Stockfish.js ([1](https://github.com/nmrugg/stockfish.js), [2](https://github.com/lichess-org/stockfish.js), [WASM](https://github.com/lichess-org/stockfish.wasm))
   - Boards
     - [chessboard.js](https://chessboardjs.com/)
+    - [chessboard3.js](https://jtiscione.github.io/chessboard3js/index.html)
   - [HTML5 2D/3D chess](https://sourceforge.net/projects/htmlchess/)
+  - [chess.js](https://github.com/jhlywa/chess.js/)
 - Doom (WASM) ([1](https://github.com/cloudflare/doom-wasm), [2](https://github.com/lazarv/wasm-doom))
 - [Jazz Jackrabbit 2](https://deat.tk/jazz2/)
 - [Wipeout](https://github.com/phoboslab/wipeout-rewrite)

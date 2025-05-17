@@ -80,6 +80,10 @@ const types = {
     process: ["Terminal", ...TEXT_EDITORS],
     type: "Python File",
   },
+  ScreenSaver: {
+    process: ["ScreenSaver"],
+    type: "Screen Saver",
+  },
   ShockwaveFlash: {
     process: ["Ruffle"],
     type: "Shockwave Flash File",
@@ -87,6 +91,10 @@ const types = {
   SvgFile: {
     process: ["Photos", ...TEXT_EDITORS],
     type: "Scalable Vector Graphics File",
+  },
+  Tic80: {
+    process: ["Tic80"],
+    type: "TIC-80 Cartridge",
   },
   WasmFile: {
     command: "wapm",
@@ -133,11 +141,13 @@ const extensions: Record<string, Extension> = {
   ".spl": types.FutureSplash,
   ".svg": types.SvgFile,
   ".swf": types.ShockwaveFlash,
+  ".tic": types.Tic80,
   ".ttf": types.Font,
   ".wasm": types.WasmFile,
   ".whtml": types.WysiwygHtmlDocument,
   ".woff": types.Font,
   ".wsz": types.WinampSkin,
+  ".xscr": types.ScreenSaver,
   ".zip": types.ZipFile,
 };
 

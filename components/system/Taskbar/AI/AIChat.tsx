@@ -1,7 +1,9 @@
 import { useTheme } from "styled-components";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  escapeHtml,
   formatWebLlmProgress,
+  responseTweaks,
   speakMessage,
 } from "components/system/Taskbar/AI/functions";
 import {
@@ -20,11 +22,8 @@ import {
 } from "components/system/Taskbar/AI/icons";
 import useAITransition from "components/system/Taskbar/AI/useAITransition";
 import {
-  AI_DISPLAY_TITLE,
-  AI_TITLE,
   AI_WORKER,
   DEFAULT_CONVO_STYLE,
-  WINDOW_ID,
 } from "components/system/Taskbar/AI/constants";
 import StyledAIChat from "components/system/Taskbar/AI/StyledAIChat";
 import { CloseIcon } from "components/system/Window/Titlebar/WindowActionIcons";
@@ -36,7 +35,13 @@ import {
   label,
   viewWidth,
 } from "utils/functions";
-import { DESKTOP_PATH, PREVENT_SCROLL, SAVE_PATH } from "utils/constants";
+import {
+  AI_TITLE,
+  AI_WINDOW_ID,
+  DESKTOP_PATH,
+  PREVENT_SCROLL,
+  SAVE_PATH,
+} from "utils/constants";
 import {
   type MessageTypes,
   type ConvoStyles,
@@ -51,6 +56,7 @@ import { useSession } from "contexts/session";
 import { useWindowAI } from "hooks/useWindowAI";
 import { useFileSystem } from "contexts/fileSystem";
 import { readPdfText } from "components/apps/PDF/functions";
+import { useSnapshots } from "hooks/useSnapshots";
 
 type AIChatProps = {
   toggleAI: () => void;
@@ -88,7 +94,7 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
       if (text) {
         setConversation((prevMessages) => {
           const newMessage = {
-            formattedText: formattedText || text,
+            formattedText: responseTweaks(formattedText || text),
             text,
             type,
             withCanvas,
@@ -110,7 +116,7 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
   );
   const addUserPrompt = useCallback(() => {
     if (promptText) {
-      addMessage(promptText, "user");
+      addMessage(escapeHtml(promptText), "user");
       (textAreaRef.current as HTMLTextAreaElement).value = "";
       setPromptText("");
     }
@@ -134,10 +140,21 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
       setCanceling(true);
     }
   }, [aiWorker, responding]);
+  const [hiddenThoughts, setHiddenThoughts] = useState<number[]>([]);
+  const toggleThought = useCallback((index: number) => {
+    setHiddenThoughts((prevHiddenThoughts) => {
+      if (prevHiddenThoughts.includes(index)) {
+        return prevHiddenThoughts.filter((i) => i !== index);
+      }
+
+      return [...prevHiddenThoughts, index];
+    });
+  }, []);
   const newTopic = useCallback(() => {
     stopResponse();
     sessionIdRef.current = 0;
     setConversation([]);
+    setHiddenThoughts([]);
     setFailedSession(false);
   }, [stopResponse]);
   const changeConvoStyle = useCallback(
@@ -154,7 +171,7 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
     useState<HTMLElement | null>();
   const { removeFromStack, setWallpaper } = useSession();
   const { zIndex, ...focusableProps } = useFocusable(
-    WINDOW_ID,
+    AI_WINDOW_ID,
     undefined,
     containerElement
   );
@@ -167,7 +184,7 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
     textArea.style.height = "auto";
     textArea.style.height = `${textArea.scrollHeight}px`;
   }, []);
-  const { createPath, exists, readFile, stat, updateFolder } = useFileSystem();
+  const { exists, readFile, stat } = useFileSystem();
   const canvasRefs = useRef<Record<number, HTMLCanvasElement>>({});
   const sendMessage = useCallback(async () => {
     const { text } = conversation[conversation.length - 1];
@@ -229,6 +246,7 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
     readFile,
     stat,
   ]);
+  const { createSnapshot } = useSnapshots();
   const saveCanvasImage = useCallback(
     async (
       index: number,
@@ -236,21 +254,20 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
       savePath: string
     ): Promise<string> => {
       const canvas = canvasRefs.current[index];
-      let newFileName = `${saveName}.png`;
 
       if (canvas) {
-        newFileName = await createPath(
-          newFileName,
-          savePath,
-          canvasToBuffer(canvas)
+        return createSnapshot(
+          `${saveName}.png`,
+          canvasToBuffer(canvas),
+          undefined,
+          false,
+          savePath
         );
-
-        updateFolder(savePath);
       }
 
-      return newFileName;
+      return "";
     },
-    [createPath, updateFolder]
+    [createSnapshot]
   );
 
   useEffect(() => {
@@ -357,13 +374,13 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
     >
       <div className="header">
         <header>
-          {AI_DISPLAY_TITLE}
+          {AI_TITLE} (beta)
           <nav>
             <Button
               className="close"
               onClick={() => {
                 toggleAI();
-                removeFromStack(WINDOW_ID);
+                removeFromStack(AI_WINDOW_ID);
               }}
               {...label("Close")}
             >
@@ -414,17 +431,40 @@ const AIChat: FC<AIChatProps> = ({ toggleAI }) => {
           {conversation.map(
             ({ formattedText, type, text, withCanvas }, index) => (
               // eslint-disable-next-line react/no-array-index-key
-              <div key={`${text}-${index}`} className={type}>
+              <div key={index} className={type}>
                 {(index === 0 || conversation[index - 1].type !== type) && (
                   <div className="avatar">
                     {type === "user" ? <PersonIcon /> : <AIIcon />}
                     {type === "user" ? "You" : "AI"}
                   </div>
                 )}
+                {text.startsWith("<think>") && (
+                  <button
+                    className={clsx({
+                      thinking: true,
+                      "thinking-responding":
+                        responding && index === conversation.length - 1,
+                    })}
+                    type="button"
+                    {...((!responding || index < conversation.length - 1) &&
+                      text.includes("</think>") && {
+                        onClick: () => toggleThought(index),
+                      })}
+                  >
+                    {text.includes("</think>") ||
+                    !responding ||
+                    index < conversation.length - 1
+                      ? "Thoughts"
+                      : "Thinking..."}
+                  </button>
+                )}
                 <div
                   // eslint-disable-next-line react/no-danger
                   dangerouslySetInnerHTML={{ __html: formattedText }}
-                  className="message"
+                  className={clsx({
+                    "hide-think": hiddenThoughts.includes(index),
+                    message: true,
+                  })}
                 />
                 <div
                   className={clsx({

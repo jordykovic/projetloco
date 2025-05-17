@@ -1,8 +1,10 @@
+import { TASKBAR_HEIGHT } from "utils/constants";
 import { loadFiles } from "utils/functions";
 
 type SheepOptions = {
   allowPopup: string;
   collisionsWith: string[];
+  footerMargin: number;
   spawnContainer: HTMLElement;
 };
 
@@ -41,16 +43,17 @@ const pickRandomPet = (): string => {
   return petPath;
 };
 
-export const spawnSheep = (): Promise<void> =>
+export const spawnSheep = (pickRandom?: boolean): Promise<void> =>
   loadFiles(["/Program Files/eSheep/eSheep.js"]).then(() => {
     if (window.Sheep) {
       const sheep = new window.Sheep({
         allowPopup: "no",
         collisionsWith: ["nav", "section"],
+        footerMargin: TASKBAR_HEIGHT,
         spawnContainer: document.querySelector("main") as HTMLElement,
       });
 
-      if (oneSheepLaunched) {
+      if (oneSheepLaunched || pickRandom) {
         sheep.Start(pickRandomPet());
       } else {
         oneSheepLaunched = true;

@@ -23,7 +23,12 @@ import {
   FOLDER_ICON,
   SHORTCUT_ICON,
 } from "utils/constants";
-import { getExtension, getFormattedSize, haltEvent } from "utils/functions";
+import {
+  getExtension,
+  getFormattedSize,
+  haltEvent,
+  saveUnpositionedDesktopIcons,
+} from "utils/functions";
 
 type TabProps = {
   icon: string;
@@ -55,7 +60,7 @@ const GeneralTab: FC<TabProps> = ({ icon, id, isShortcut, pid, url }) => {
   const isDirectory = useMemo(() => stats?.isDirectory(), [stats]);
   const entrySize = folderSize || (isDirectory ? 0 : stats?.size);
   const checkedFileCounts = useRef(false);
-  const abortControllerRef = useRef<AbortController>();
+  const abortControllerRef = useRef<AbortController>(undefined);
   const [folderIcon, setFolderIcon] = useState(FOLDER_ICON);
   const okAction = useCallback(async (): Promise<void> => {
     if (inputRef.current && url && inputRef.current.value !== basename(url)) {
@@ -72,6 +77,10 @@ const GeneralTab: FC<TabProps> = ({ icon, id, isShortcut, pid, url }) => {
         const renamedPath = `${join(directoryName, newName)}${
           isShortcut ? extname(url) : ""
         }`;
+
+        if (directoryName === DESKTOP_PATH) {
+          saveUnpositionedDesktopIcons(setIconPositions);
+        }
 
         if (await rename(url, renamedPath)) {
           updateFolder(directoryName, renamedPath, url);

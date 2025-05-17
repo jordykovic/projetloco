@@ -1,6 +1,8 @@
 import { basename, join } from "path";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import StyledLoading from "components/system/Files/FileManager/StyledLoading";
+import StatusBar from "components/system/Files/FileManager/StatusBar";
 import {
   DEFAULT_COLUMNS,
   type Columns as ColumnsObject,
@@ -14,7 +16,10 @@ import useFileKeyboardShortcuts from "components/system/Files/FileManager/useFil
 import useFocusableEntries from "components/system/Files/FileManager/useFocusableEntries";
 import useFolder from "components/system/Files/FileManager/useFolder";
 import useFolderContextMenu from "components/system/Files/FileManager/useFolderContextMenu";
-import { FileManagerViews } from "components/system/Files/Views";
+import {
+  type FileManagerViewNames,
+  FileManagerViews,
+} from "components/system/Files/Views";
 import { useFileSystem } from "contexts/fileSystem";
 import {
   FOCUSABLE_ELEMENT,
@@ -26,16 +31,8 @@ import { getExtension, haltEvent } from "utils/functions";
 import Columns from "components/system/Files/FileManager/Columns";
 import { useSession } from "contexts/session";
 
-const StatusBar = dynamic(
-  () => import("components/system/Files/FileManager/StatusBar")
-);
-
 const StyledEmpty = dynamic(
   () => import("components/system/Files/FileManager/StyledEmpty")
-);
-
-const StyledLoading = dynamic(
-  () => import("components/system/Files/FileManager/StyledLoading")
 );
 
 type FileManagerProps = {
@@ -89,11 +86,15 @@ const FileManager: FC<FileManagerProps> = ({
   const [mounted, setMounted] = useState<boolean>(false);
   const fileManagerRef = useRef<HTMLOListElement | null>(null);
   const { focusedEntries, focusableEntry, ...focusFunctions } =
-    useFocusableEntries(fileManagerRef);
+    useFocusableEntries(
+      fileManagerRef,
+      !isStartMenu && !isDesktop && !isDetailsView
+    );
   const { fileActions, files, folderActions, isLoading, updateFiles } =
     useFolder(url, setRenaming, focusFunctions, {
       hideFolders,
       hideLoading,
+      isDesktop,
       skipFsWatcher,
       skipSorting,
     });
@@ -106,7 +107,8 @@ const FileManager: FC<FileManagerProps> = ({
     focusFunctions,
     fileManagerRef,
     isSelecting,
-    allowMovingDraggableEntries
+    allowMovingDraggableEntries,
+    isDesktop
   );
   const fileDrop = useFileDrop({
     callback: folderActions.newPath,
@@ -120,6 +122,13 @@ const FileManager: FC<FileManagerProps> = ({
     isStartMenu
   );
   const loading = (!hideLoading && isLoading) || url !== currentUrl;
+  const setView = useCallback(
+    (newView: FileManagerViewNames) => {
+      setViews((currentViews) => ({ ...currentViews, [url]: newView }));
+      setColumns(newView === "details" ? DEFAULT_COLUMNS : undefined);
+    },
+    [setViews, url]
+  );
   const keyShortcuts = useFileKeyboardShortcuts(
     files,
     url,
@@ -130,10 +139,13 @@ const FileManager: FC<FileManagerProps> = ({
     updateFiles,
     fileManagerRef,
     id,
-    view
+    isStartMenu,
+    isDesktop,
+    setView
   );
   const [permission, setPermission] = useState<PermissionState>("prompt");
   const requestingPermissions = useRef(false);
+  const focusedOnLoad = useRef(false);
   const onKeyDown = useMemo(
     () => (renaming === "" ? keyShortcuts() : undefined),
     [keyShortcuts, renaming]
@@ -207,8 +219,9 @@ const FileManager: FC<FileManagerProps> = ({
   }, [currentUrl, folderActions, url]);
 
   useEffect(() => {
-    if (!loading && !isDesktop && !isStartMenu) {
+    if (!focusedOnLoad.current && !loading && !isDesktop && !isStartMenu) {
       fileManagerRef.current?.focus(PREVENT_SCROLL);
+      focusedOnLoad.current = true;
     }
   }, [isDesktop, isStartMenu, loading]);
 
@@ -227,7 +240,7 @@ const FileManager: FC<FileManagerProps> = ({
             ref={fileManagerRef}
             $isEmptyFolder={isEmptyFolder}
             $scrollable={!hideScrolling}
-            onKeyDown={onKeyDown}
+            onKeyDownCapture={onKeyDown}
             {...(readOnly
               ? { onContextMenu: haltEvent }
               : {
@@ -290,10 +303,7 @@ const FileManager: FC<FileManagerProps> = ({
           directory={url}
           fileDrop={fileDrop}
           selected={focusedEntries}
-          setView={(newView) => {
-            setViews((currentViews) => ({ ...currentViews, [url]: newView }));
-            setColumns(newView === "details" ? DEFAULT_COLUMNS : undefined);
-          }}
+          setView={setView}
           view={view}
         />
       )}

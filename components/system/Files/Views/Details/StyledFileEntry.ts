@@ -2,7 +2,6 @@ import styled from "styled-components";
 import { type StyledFileEntryProps } from "components/system/Files/Views";
 
 const StyledFileEntry = styled.li<StyledFileEntryProps>`
-  margin-bottom: -1px;
   margin-left: ${({ theme }) => theme.sizes.fileManager.detailsStartPadding}px;
   width: fit-content;
 
@@ -25,10 +24,15 @@ const StyledFileEntry = styled.li<StyledFileEntryProps>`
         color: ${({ theme }) => theme.colors.fileEntry.text};
         font-size: ${({ theme }) => theme.sizes.fileEntry.fontSize};
         overflow: hidden;
+        overflow-wrap: anywhere;
         padding-left: 4px;
         text-overflow: ellipsis;
         white-space: nowrap;
-        word-break: break-word;
+
+        @supports not (overflow-wrap: anywhere) {
+          /* stylelint-disable declaration-property-value-keyword-no-deprecated */
+          word-break: break-word;
+        }
       }
     }
   }

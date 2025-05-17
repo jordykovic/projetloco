@@ -1,4 +1,4 @@
-import { basename } from "path";
+import { basename, extname } from "path";
 import { useCallback, useEffect, useRef } from "react";
 import { type Unzipped } from "fflate";
 import { getConfig } from "components/apps/BoxedWine/config";
@@ -40,8 +40,8 @@ const useBoxedWine = ({
   const { processes: { [id]: { libs = [] } = {} } = {} } = useProcesses();
   const { readFile } = useFileSystem();
   const mountEmFs = useEmscriptenMount();
-  const loadedUrl = useRef<string>();
-  const blankCanvasCheckerTimer = useRef<number | undefined>();
+  const loadedUrl = useRef<string>(undefined);
+  const blankCanvasCheckerTimer = useRef(0);
   const loadEmulator = useCallback(async (): Promise<void> => {
     let dynamicConfig = {};
     let appPayload = url ? await readFile(url) : Buffer.from("");
@@ -75,7 +75,7 @@ const useBoxedWine = ({
       blankCanvasCheckerTimer.current = window.setInterval(() => {
         if (isCanvasDrawn(containerRef.current?.querySelector("canvas"))) {
           clearInterval(blankCanvasCheckerTimer.current);
-          blankCanvasCheckerTimer.current = undefined;
+          blankCanvasCheckerTimer.current = 0;
           containerRef.current?.querySelector("ol")?.remove();
         }
       }, 100);
@@ -106,7 +106,10 @@ const useBoxedWine = ({
       try {
         window.BoxedWineShell(() => {
           setLoading(false);
-          mountEmFs(window.FS as EmscriptenFS, "BoxedWine");
+          mountEmFs(
+            window.FS as EmscriptenFS,
+            url ? `BoxedWine_${basename(url, extname(url))}` : id
+          );
         });
       } catch {
         // Ignore BoxedWine errors
@@ -115,6 +118,7 @@ const useBoxedWine = ({
   }, [
     appendFileToTitle,
     containerRef,
+    id,
     libs,
     mountEmFs,
     readFile,

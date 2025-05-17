@@ -1,5 +1,8 @@
 import { basename, join, resolve } from "path";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useProxyMenu, {
+  type ProxyState,
+} from "components/apps/Browser/useProxyMenu";
 import { ADDRESS_INPUT_PROPS } from "components/apps/FileExplorer/AddressBar";
 import useHistoryMenu from "components/apps/Browser/useHistoryMenu";
 import useBookmarkMenu from "components/apps/Browser/useBookmarkMenu";
@@ -7,13 +10,18 @@ import {
   createDirectoryIndex,
   type DirectoryEntries,
 } from "components/apps/Browser/directoryIndex";
-import { Arrow, Refresh, Stop } from "components/apps/Browser/NavigationIcons";
+import {
+  Arrow,
+  Network,
+  Refresh,
+  Stop,
+} from "components/apps/Browser/NavigationIcons";
 import StyledBrowser from "components/apps/Browser/StyledBrowser";
 import {
   DINO_GAME,
   HOME_PAGE,
-  LOCAL_HOST,
   NOT_FOUND,
+  PROXIES,
   bookmarks,
 } from "components/apps/Browser/config";
 import { type ComponentProcessProps } from "components/system/Apps/RenderComponent";
@@ -32,6 +40,7 @@ import {
 } from "utils/constants";
 import {
   GOOGLE_SEARCH_QUERY,
+  LOCAL_HOST,
   getExtension,
   getUrlOrSearch,
   haltEvent,
@@ -39,9 +48,16 @@ import {
 } from "utils/functions";
 import {
   getInfoWithExtension,
+  getModifiedTime,
   getShortcutInfo,
 } from "components/system/Files/FileEntry/functions";
 import { useSession } from "contexts/session";
+
+declare module "react" {
+  interface IframeHTMLAttributes<T> extends React.HTMLAttributes<T> {
+    credentialless?: "credentialless";
+  }
+}
 
 const Browser: FC<ComponentProcessProps> = ({ id }) => {
   const {
@@ -102,6 +118,8 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
     position,
     moveHistory
   );
+  const [proxyState, setProxyState] = useState<ProxyState>("CORS");
+  const proxyMenu = useProxyMenu(proxyState, setProxyState);
   const bookmarkMenu = useBookmarkMenu();
   const setUrl = useCallback(
     async (addressInput: string): Promise<void> => {
@@ -162,18 +180,18 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
                       }
                     }
 
-                    const stats = await stat(
+                    const filePath =
                       shortcutUrl && (await exists(shortcutUrl))
                         ? shortcutUrl
-                        : href
-                    );
+                        : href;
+                    const stats = await stat(filePath);
                     const isDir = stats.isDirectory();
 
                     return {
                       description,
                       href: isDir && shortcutUrl ? shortcutUrl : href,
                       icon: isDir ? "folder" : undefined,
-                      modified: stats.mtime,
+                      modified: getModifiedTime(filePath, stats),
                       size: isDir || shortcutUrl ? undefined : stats.size,
                     };
                   })
@@ -218,9 +236,7 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
                   }
 
                   if (column === "M") {
-                    return sortValue(
-                      ({ modified }) => modified?.getTime() ?? 0
-                    );
+                    return sortValue(({ modified }) => modified ?? 0);
                   }
 
                   if (column === "D") {
@@ -302,7 +318,9 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
             setSrcDoc(newSrcDoc);
             prependFileToTitle(newTitle);
           } else {
-            const addressUrl = processedUrl.href;
+            const addressUrl = PROXIES[proxyState]
+              ? await PROXIES[proxyState](processedUrl.href)
+              : processedUrl.href;
 
             changeIframeWindowLocation(addressUrl, contentWindow);
 
@@ -357,12 +375,17 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
       initialTitle,
       open,
       prependFileToTitle,
+      proxyState,
       readFile,
       readdir,
       setIcon,
       stat,
       updateRecentFiles,
     ]
+  );
+  const supportsCredentialless = useMemo(
+    () => "credentialless" in HTMLIFrameElement.prototype,
+    []
   );
 
   useEffect(() => {
@@ -423,6 +446,14 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
           }}
           {...ADDRESS_INPUT_PROPS}
         />
+        <Button
+          className="proxy"
+          onClick={proxyMenu.onContextMenuCapture}
+          onContextMenu={haltEvent}
+          {...label("Proxy settings")}
+        >
+          <Network />
+        </Button>
       </nav>
       <nav>
         {bookmarks.map(({ name, icon, url: bookmarkUrl }) => (
@@ -442,7 +473,7 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
             )}
             {...bookmarkMenu}
           >
-            <Icon alt={name} imgSize={16} src={icon} />
+            <Icon alt={name} imgSize={16} src={icon} singleSrc />
           </Button>
         ))}
       </nav>
@@ -462,6 +493,7 @@ const Browser: FC<ComponentProcessProps> = ({ id }) => {
         srcDoc={srcDoc || undefined}
         title={id}
         {...IFRAME_CONFIG}
+        credentialless={supportsCredentialless ? "credentialless" : undefined}
       />
     </StyledBrowser>
   );

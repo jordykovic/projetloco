@@ -20,7 +20,7 @@ import {
   PREVENT_SCROLL,
   SHORTCUT_EXTENSION,
 } from "utils/constants";
-import { getExtension, haltEvent } from "utils/functions";
+import { getExtension, haltEvent, notFound } from "utils/functions";
 import { getIpfsFileName, getIpfsResource } from "utils/ipfs";
 import { spawnSheep } from "utils/spawnSheep";
 import Icon from "styles/common/Icon";
@@ -40,12 +40,6 @@ export const resourceAliasMap: Record<string, string> = {
 
 const MESSAGE = `Type the name of a program, folder, document, or Internet resource, and ${PACKAGE_DATA.alias} will open it for you.`;
 
-const notFound = (resource: string): void =>
-  // eslint-disable-next-line no-alert
-  alert(
-    `Cannot find '${resource}'. Make sure you typed the name correctly, and then try again.`
-  );
-
 const utilCommandMap: Record<string, () => void> = {
   esheep: spawnSheep,
   sheep: spawnSheep,
@@ -64,10 +58,12 @@ const Run: FC<ComponentProcessProps> = ({ id }) => {
   const [isInputFocused, setIsInputFocused] = useState(true);
   const [isEmptyInput, setIsEmptyInput] = useState(!runHistory[0]);
   const [running, setRunning] = useState(false);
-  const checkIsEmpty: React.KeyboardEventHandler | React.ChangeEventHandler = ({
-    target,
-  }: React.KeyboardEvent | React.ChangeEvent): void =>
-    setIsEmptyInput(!(target as HTMLInputElement)?.value);
+  const checkIsEmpty: React.KeyboardEventHandler | React.ChangeEventHandler =
+    useCallback(
+      ({ target }: React.KeyboardEvent | React.ChangeEvent): void =>
+        setIsEmptyInput(!(target as HTMLInputElement)?.value),
+      []
+    );
   const runResource = useCallback(
     async (resource?: string) => {
       if (!resource) return;

@@ -1,5 +1,6 @@
 import { useTheme } from "styled-components";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { importCalendar } from "components/system/Taskbar/functions";
 import { measureText } from "components/system/Files/FileEntry/functions";
 import StyledClock from "components/system/Taskbar/Clock/StyledClock";
 import { type LocaleTimeDate } from "components/system/Taskbar/Clock/functions";
@@ -14,13 +15,9 @@ import {
   TASKBAR_HEIGHT,
 } from "utils/constants";
 import { createOffscreenCanvas } from "utils/functions";
+import { useMenuPreload } from "hooks/useMenuPreload";
 
 type ClockWorkerResponse = LocaleTimeDate | "source";
-
-const ClockSourceMap = {
-  local: "Local",
-  ntp: "Server",
-};
 
 const EASTER_EGG_CLICK_COUNT = 7;
 
@@ -83,11 +80,13 @@ const Clock: FC<ClockProps> = ({
           "components/system/Taskbar/Clock/clock.worker",
           import.meta.url
         ),
-        { name: `Clock (${ClockSourceMap[clockSource]})` }
+        { name: "Clock" }
       ),
+    // NOTE: Need `clockSource` in the dependency array to ensure the worker is rebuilt
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [clockSource]
   );
-  const offScreenClockCanvas = useRef<OffscreenCanvas>();
+  const offScreenClockCanvas = useRef<OffscreenCanvas>(undefined);
   const supportsOffscreenCanvas = useMemo(
     () => typeof window !== "undefined" && "OffscreenCanvas" in window,
     []
@@ -170,6 +169,7 @@ const Clock: FC<ClockProps> = ({
     },
     [toggleCalendar]
   );
+  const menuPreloadHandler = useMenuPreload(importCalendar);
 
   useEffect(() => {
     offScreenClockCanvas.current = undefined;
@@ -212,6 +212,7 @@ const Clock: FC<ClockProps> = ({
       suppressHydrationWarning
       {...clockContextMenu}
       {...FOCUSABLE_ELEMENT}
+      {...menuPreloadHandler}
     >
       {supportsOffscreenCanvas ? undefined : time}
     </StyledClock>

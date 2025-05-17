@@ -87,7 +87,7 @@ export const aliases: Record<string, string[]> = {
   move: ["mv"],
   neofetch: ["systeminfo"],
   python: ["py", "python3"],
-  qjs: ["node", "quickjs"],
+  qjs: ["eval", "node", "quickjs"],
   rd: ["rmdir"],
   ren: ["rename"],
   sheep: ["esheep"],
@@ -98,6 +98,7 @@ export const aliases: Record<string, string[]> = {
   ver: ["version"],
   wapm: ["wasmer", "wax"],
   weather: ["wttr"],
+  whoami: ["logname"],
   wsl: ["linux"],
 };
 
@@ -151,7 +152,11 @@ export const autoComplete = (
 
   localEcho.addAutocompleteHandler((index: number, [command]): string[] => {
     if (index === 0) {
-      return [...Object.keys(commands), ...directory];
+      return [
+        ...Object.keys(commands),
+        ...Object.values(aliases).flat(),
+        ...directory,
+      ];
     }
     if (index === 1) {
       const lowerCommand = command.toLowerCase();
@@ -289,6 +294,9 @@ export const printColor = (
       ...colorAttributes[7].rgb
     )}`
   }\u001B[0m`;
+
+export const clearAnsiBackground = (text: string): string =>
+  text.replace(/;48;2;/g, ";48;0;").replace(/;48;5;/g, ";48;0;");
 
 export const readClipboardToTerminal = (localEcho: LocalEcho): void => {
   try {

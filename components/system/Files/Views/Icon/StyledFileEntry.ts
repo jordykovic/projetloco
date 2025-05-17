@@ -4,8 +4,10 @@ import { type StyledFileEntryProps } from "components/system/Files/Views";
 const StyledFileEntry = styled.li<StyledFileEntryProps>`
   display: ${({ $visible }) => ($visible ? "flex" : "none")};
   height: min-content;
+  margin-bottom: ${({ $labelHeightOffset }) =>
+    $labelHeightOffset ? `-${$labelHeightOffset}px` : undefined};
   outline-offset: -2px;
-  padding: 2px;
+  padding: ${({ theme }) => theme.sizes.fileEntry.iconPadding};
 
   button {
     position: relative;
@@ -21,10 +23,20 @@ const StyledFileEntry = styled.li<StyledFileEntryProps>`
         font-size: ${({ theme }) => theme.sizes.fileEntry.fontSize};
         line-height: 1.2;
         margin: 1px 0;
+        overflow-wrap: anywhere;
         padding: 2px 0;
         text-shadow: ${({ $desktop, theme }) =>
           $desktop ? theme.colors.fileEntry.textShadow : undefined};
-        word-break: break-word;
+
+        @supports not (overflow-wrap: anywhere) {
+          /* stylelint-disable declaration-property-value-keyword-no-deprecated */
+          word-break: break-word;
+        }
+      }
+
+      textarea {
+        position: absolute;
+        top: ${({ theme }) => theme.sizes.fileEntry.iconSize};
       }
 
       picture {
@@ -56,10 +68,6 @@ const StyledFileEntry = styled.li<StyledFileEntryProps>`
         ? `1px solid ${theme.colors.fileEntry.borderFocused}`
         : undefined};
     z-index: 1;
-
-    &.only-focused {
-      margin-bottom: -1000px;
-    }
 
     &:hover {
       background-color: ${({ theme, $selecting }) =>

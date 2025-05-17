@@ -2,7 +2,11 @@
 
 ## _Desktop environment in the browser_
 
-[![Feature Overview](https://img.youtube.com/vi/RRLq3T0Surs/mqdefault.jpg)](http://www.youtube.com/watch?v=RRLq3T0Surs)
+![Screenshot](https://raw.githubusercontent.com/DustinBrett/daedalOS/refs/heads/main/public/screenshot.png?raw=true)
+
+### Feature Overview
+
+[![Feature Overview](https://img.youtube.com/vi/djCqHH0SCmA/mqdefault.jpg)](http://www.youtube.com/watch?v=djCqHH0SCmA)
 
 # System 🧠
 
@@ -10,6 +14,7 @@
 
 - File Explorer
   - Back, Forward, Recent locations, Up one level, Address bar, Search
+  - Thumbnail & Details Views
 - [Drag & Drop](https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API) File Support (internal & external)
   - Loading progress dialog
 - ZIP ([write support](https://www.npmjs.com/package/fflate)), [ZIP](https://github.com/jvilk/BrowserFS/blob/master/src/backends/ZipFS.ts)/[ISO](https://github.com/jvilk/BrowserFS/blob/master/src/backends/IsoFS.ts) read support, [7Z/GZ/RAR/TAR/etc. extract](https://github.com/use-strict/7z-wasm) support
@@ -64,7 +69,7 @@
 - Date tooltip
 - Calendar popup
 
-### Background
+### Background & Screensaver
 
 - Dynamic animated wallpapers ([OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas)/[Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers))
   - [Waves](https://www.vantajs.com/?effect=waves)
@@ -75,6 +80,10 @@
 - Picture Slideshow
 - [Astronomy Picture of the Day](https://api.nasa.gov/#apod)
 - AI Generated Wallpapers [Stable Diffusion](https://stability.ai/stable-diffusion)
+- Custom screen saver file support
+  - [3D FlowerBox](https://github.com/kevin-shannon/3D-FlowerBox)
+  - [3D Maze](https://github.com/ibid-11962/Windows-95-3D-Maze-Screensaver)
+  - [Pipes](https://github.com/1j01/pipes)
 
 ### URL
 

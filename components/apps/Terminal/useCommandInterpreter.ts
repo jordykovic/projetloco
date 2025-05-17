@@ -66,6 +66,7 @@ import {
   getTZOffsetISOString,
   isFileSystemMappingSupported,
   loadFiles,
+  saveUnpositionedDesktopIcons,
 } from "utils/functions";
 import { convert } from "utils/imagemagick";
 import { getIpfsFileName, getIpfsResource } from "utils/ipfs";
@@ -97,10 +98,10 @@ declare global {
 
 const useCommandInterpreter = (
   id: string,
-  cd: React.MutableRefObject<string>,
+  cd: React.RefObject<string>,
   terminal?: Terminal,
   localEcho?: LocalEcho
-): React.MutableRefObject<CommandInterpreter> => {
+): React.RefObject<CommandInterpreter> => {
   const {
     createPath,
     deletePath,
@@ -118,7 +119,7 @@ const useCommandInterpreter = (
     writeFile,
   } = useFileSystem();
   const { closeWithTransition, open, title: changeTitle } = useProcesses();
-  const { updateRecentFiles } = useSession();
+  const { setIconPositions, updateRecentFiles } = useSession();
   const processesRef = useProcessesRef();
   const { name: themeName } = useTheme();
   const getFullPath = useCallback(
@@ -362,8 +363,14 @@ const useCommandInterpreter = (
             if (commandPath) {
               const fullPath = await getFullPath(commandPath);
 
-              if ((await exists(fullPath)) && (await deletePath(fullPath))) {
-                updateFile(fullPath, true);
+              if (await exists(fullPath)) {
+                if (dirname(fullPath) === DESKTOP_PATH) {
+                  saveUnpositionedDesktopIcons(setIconPositions);
+                }
+
+                if (await deletePath(fullPath)) {
+                  updateFile(fullPath, true);
+                }
               }
             }
             break;
@@ -403,7 +410,10 @@ const useCommandInterpreter = (
                     const mDate = new Date(
                       getModifiedTime(filePath, fileStats)
                     );
-                    const date = mDate.toISOString().slice(0, 10);
+                    const date = getTZOffsetISOString(mDate.getTime()).slice(
+                      0,
+                      10
+                    );
                     const time = timeFormatter.format(mDate).padStart(8, "0");
                     const isDirectory = fileStats.isDirectory();
 
@@ -712,6 +722,10 @@ const useCommandInterpreter = (
                     fullDestinationPath,
                     basename(fullSourcePath)
                   );
+                }
+
+                if (dirname(fullSourcePath) === DESKTOP_PATH) {
+                  saveUnpositionedDesktopIcons(setIconPositions);
                 }
 
                 if (await rename(fullSourcePath, fullDestinationPath)) {
@@ -1249,6 +1263,7 @@ const useCommandInterpreter = (
       readdir,
       rename,
       rootFs,
+      setIconPositions,
       stat,
       terminal,
       themeName,

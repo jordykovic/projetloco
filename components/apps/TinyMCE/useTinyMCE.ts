@@ -69,7 +69,9 @@ const useTinyMCE = ({
     if (editor) {
       const setupSaveCallback = (): void => {
         editor.options.set("save_onsavecallback", async () => {
-          const saveSpec: NotificationSpec = {
+          const saveSpec: NotificationSpec & {
+            closeButton: boolean; // V6 Spec
+          } = {
             closeButton: true,
             text: "Successfully saved.",
             timeout: 5000,
@@ -162,11 +164,10 @@ const useTinyMCE = ({
 
       loadFiles(libs).then(() => {
         if (window.tinymce && containerRef.current) {
-          window.tinymce.remove();
           window.tinymce
             .init({
               readonly: Boolean(url),
-              selector: `.${[...containerRef.current.classList].join(".")} div`,
+              selector: `.${[...containerRef.current.classList].join(".")} div[id="${id}"]`,
               setup: (editorInstance) => {
                 editorInstance.on("ExecCommand", ({ command }) => {
                   if (command === "mceNewDocument") {

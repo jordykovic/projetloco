@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef } from "react";
-import { getShortcutInfo } from "components/system/Files/FileEntry/functions";
+import { useMemo } from "react";
 import { useFileSystem } from "contexts/fileSystem";
 import { useProcesses } from "contexts/process";
 import { useProcessesRef } from "hooks/useProcessesRef";
 import { PROCESS_DELIMITER, SHORTCUT_EXTENSION } from "utils/constants";
 import { getExtension } from "utils/functions";
 
-export type Operation = "Copying" | "Extracting" | "Moving";
+export type Operation = "Copying" | "Converting" | "Extracting" | "Moving";
 
 export type FileReaders = [File, string, FileReader][];
 
@@ -24,7 +23,8 @@ export type ObjectReaders = ObjectReader[];
 type Dialog = {
   openTransferDialog: (
     fileReaders?: FileReaders | ObjectReaders,
-    url?: string
+    url?: string,
+    operation?: Operation
   ) => Promise<void>;
 };
 
@@ -32,25 +32,18 @@ const useTransferDialog = (): Dialog => {
   const { argument, open } = useProcesses();
   const processesRef = useProcessesRef();
   const { readFile } = useFileSystem();
-  const getTransferIdCallbackRef =
-    useRef<(url: string) => string | undefined>();
-
-  useEffect(() => {
-    getTransferIdCallbackRef.current = (url: string) =>
-      Object.keys(processesRef.current).find((id) => {
-        const [pid, pidUrl] = id.split(PROCESS_DELIMITER);
-
-        return pid === "Transfer" && url === pidUrl;
-      }) || "";
-  }, [processesRef]);
 
   return useMemo(
     () => ({
-      openTransferDialog: async (fileReaders, url) => {
+      openTransferDialog: async (fileReaders, url, operation) => {
         if (fileReaders?.length === 0) return;
 
         if (fileReaders && url) {
-          const currentPid = getTransferIdCallbackRef.current?.(url);
+          const currentPid = Object.keys(processesRef.current).find((id) => {
+            const [pid, pidUrl] = id.split(PROCESS_DELIMITER);
+
+            return pid === "Transfer" && url === pidUrl;
+          });
 
           if (currentPid) {
             argument(currentPid, "fileReaders", fileReaders);
@@ -60,6 +53,9 @@ const useTransferDialog = (): Dialog => {
             const [{ directory, name }] = fileReaders;
 
             if (getExtension(name) === SHORTCUT_EXTENSION) {
+              const { getShortcutInfo } = await import(
+                "components/system/Files/FileEntry/functions"
+              );
               const { url: shortcutUrl } = getShortcutInfo(
                 await readFile(name)
               );
@@ -68,11 +64,11 @@ const useTransferDialog = (): Dialog => {
             }
           }
 
-          open("Transfer", { fileReaders, url });
+          open("Transfer", { fileReaders, operation, url });
         }
       },
     }),
-    [argument, open, readFile]
+    [argument, open, processesRef, readFile]
   );
 };
 

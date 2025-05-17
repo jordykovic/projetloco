@@ -1,10 +1,15 @@
 import { type WallpaperConfig } from "components/system/Desktop/Wallpapers/types";
 import {
+  config as vantaConfig,
   disableControls,
-  libs,
 } from "components/system/Desktop/Wallpapers/vantaWaves/config";
 import { type VantaWavesConfig } from "components/system/Desktop/Wallpapers/vantaWaves/types";
 import { loadFiles } from "utils/functions";
+
+export const libs = [
+  "/System/Vanta.js/three.min.js",
+  "/System/Vanta.js/vanta.waves.min.js",
+];
 
 const vantaWaves = (
   el: HTMLElement | null,
@@ -26,10 +31,18 @@ const vantaWaves = (
 
     if (WAVES) {
       try {
+        const { material, waveSpeed } = config as VantaWavesConfig;
+        const wavesConfig = {
+          ...vantaConfig,
+          waveSpeed: vantaConfig.waveSpeed * waveSpeed,
+        };
+
+        wavesConfig.material.options.wireframe = material.options.wireframe;
+
         WAVES({
           el,
           ...disableControls,
-          ...(config as VantaWavesConfig),
+          ...wavesConfig,
         });
       } catch {
         fallback?.();
