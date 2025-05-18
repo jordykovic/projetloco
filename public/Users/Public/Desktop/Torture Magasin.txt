@@ -1,5 +1,5 @@
 [InternetShortcut]
 BaseURL=FileExplorer
-IconFile=/System/Icons/documents.webp
+IconFile=/System/Icons/new_folder.webp
 Type=System
 URL=/Users/Public/Torture Magasin
