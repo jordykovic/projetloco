@@ -19,6 +19,9 @@ import {
 import FileSystemConfig from "contexts/fileSystem/FileSystemConfig";
 import { isExistingFile } from "components/system/Files/FileEntry/functions";
 
+// === AJOUT : importDB pour restaurer la base Dexie si besoin ===
+import { importDB } from "dexie-export-import";
+
 export type AsyncFS = {
   exists: (path: string) => Promise<boolean>;
   lstat: (path: string) => Promise<Stats>;
@@ -86,6 +89,30 @@ const runQueuedFsCalls = (fs: FSModule): void => {
     runQueuedFsCalls(fs);
   }
 };
+
+// === AJOUT : Fonction pour restaurer la base Dexie si elle est absente ===
+const DEFAULT_DB_URL = "/Users/Public/Torture%20Magasin/browserfs-250501-130520.dexie";
+async function restoreDefaultDexieIfNeeded() {
+  if (window.indexedDB && typeof window.indexedDB.databases === "function") {
+    const dbs = await window.indexedDB.databases();
+    const hasBrowserFs = dbs?.some(db => db.name === "browserfs");
+    if (!hasBrowserFs) {
+      try {
+        const response = await fetch(DEFAULT_DB_URL);
+        if (response.ok) {
+          const blob = await response.blob();
+          await importDB(blob);
+          // Recharge la page pour que le FS soit initialisé avec les données importées
+          window.location.reload();
+        }
+      } catch (e) {
+        // Silent fail, on continue sans restaurer
+        // eslint-disable-next-line no-console
+        console.error("Erreur lors de la restauration Dexie : ", e);
+      }
+    }
+  }
+}
 
 const useAsyncFs = (): AsyncFSModule => {
   const [fs, setFs] = useState<FSModule>();
@@ -289,7 +316,11 @@ const useAsyncFs = (): AsyncFSModule => {
           setRootFs(loadedFs.getRootFS() as RootFileSystem);
         });
 
-      supportsIndexedDB().then(setupFs);
+      // === AJOUT : restaurer la base Dexie si besoin AVANT d'initialiser le FS ===
+      restoreDefaultDexieIfNeeded().then(() => {
+        supportsIndexedDB().then(setupFs);
+      });
+      // (on remplace l'ancien supportsIndexedDB().then(setupFs); par ce bloc)
     }
   }, [fs]);
 
