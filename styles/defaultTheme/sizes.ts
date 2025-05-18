@@ -10,9 +10,9 @@ const sizes = {
     subMenuOffset: 3,
   },
   fileEntry: {
-    fontSize: "12px",
-    iconPadding: "2px",
-    iconSize: "48px",
+    fontSize: "24px",
+    iconPadding: "4px",
+    iconSize: "96px",
     maxIconTextDisplayWidth: 70,
     maxListTextDisplayWidth: 100,
     renamePadding: 5,
