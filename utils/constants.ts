@@ -24,7 +24,7 @@ export const DEFAULT_THEME: ThemeName = "defaultTheme";
 
 export const DEFAULT_WALLPAPER = "SLIDESHOW";
 
-export const DEFAULT_WALLPAPER_FIT: WallpaperFit = "fill";
+export const DEFAULT_WALLPAPER_FIT: WallpaperFit = "fit";
 
 export const THIN_SCROLLBAR_WIDTH = 13;
 
