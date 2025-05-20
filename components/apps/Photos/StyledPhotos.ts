@@ -40,8 +40,11 @@ const StyledPhotos = styled.div<StyledPhotosProps>`
       display: ${({ $showImage }) => ($showImage ? "block" : "none")};
       max-height: 100%;
       max-width: 100%;
+      object-fit: contain;
+      width: 100%;
+      height: 100%;
+      }
     }
-  }
 
   nav {
     display: flex;
