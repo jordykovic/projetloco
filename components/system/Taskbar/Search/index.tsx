@@ -74,9 +74,9 @@ type TabData = {
 
 export const NO_RESULTS = "NO_RESULTS";
 
-const SUGGESTED = ["Terminal", "Browser", "Paint"];
+const SUGGESTED = ["FileExplorer", "Terminal", "Messenger", "Browser", "Paint"];
 
-const GAMES = ["ChromeDino", "Quake3", "DXBall"];
+const GAMES = ["SpaceCadet", "Quake3", "DXBall"];
 
 const METADATA = {
   Documents: {
@@ -91,10 +91,6 @@ const METADATA = {
   Videos: {
     icon: <Videos />,
     title: "Videos",
-  },
-  Music: {
-    icon: <Music />,
-    title: "Music",
   },
 } as Record<TabName, TabData>;
 
