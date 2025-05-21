@@ -1,2 +1,5 @@
-
+[InternetShortcut]
+BaseURL=FileExplorer
 IconFile=/System/Icons/music.webp
+Type=System
+URL=/Users/Public/Music
