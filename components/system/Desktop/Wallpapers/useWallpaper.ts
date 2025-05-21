@@ -418,18 +418,8 @@ const useWallpaper = (
         desktopRef.current?.append(video);
       } else {
         const applyWallpaper = (url: string): void => {
-          let positionSize = bgPositionSize[newWallpaperFit];
-
-          if (isSlideshow) {
-            try {
-              const { searchParams } = new URL(url);
-              const { x, y } = Object.fromEntries(searchParams.entries());
-
-              positionSize = `${parseBgPosition(x)} ${parseBgPosition(y)} / cover`;
-            } catch {
-              // Ignore failure to specify background position
-            }
-          }
+          // Patch: always use contain for slideshow backgrounds
+          let positionSize = isSlideshow ? "contain" : bgPositionSize[newWallpaperFit];
 
           const repeat = newWallpaperFit === "tile" ? "repeat" : "no-repeat";
           const isTopWindow = window === window.top;
