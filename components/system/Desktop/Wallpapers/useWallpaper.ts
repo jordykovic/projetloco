@@ -42,7 +42,6 @@ import {
   isBeforeBg,
   isYouTubeUrl,
   jsonFetch,
-  parseBgPosition,
   preloadImage,
   viewWidth,
 } from "utils/functions";
@@ -418,8 +417,8 @@ const useWallpaper = (
         desktopRef.current?.append(video);
       } else {
         const applyWallpaper = (url: string): void => {
-          // Patch: always use contain for slideshow backgrounds
-          let positionSize = isSlideshow ? "contain" : bgPositionSize[newWallpaperFit];
+          // Always use contain for slideshow backgrounds
+          const positionSize = isSlideshow ? "contain" : bgPositionSize[newWallpaperFit];
 
           const repeat = newWallpaperFit === "tile" ? "repeat" : "no-repeat";
           const isTopWindow = window === window.top;
