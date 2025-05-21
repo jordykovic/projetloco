@@ -93,7 +93,7 @@ const METADATA = {
     title: "Videos",
   },
   Music: {
-    icon: <Documents />,
+    icon: <Music />,
     title: "Music",
   },
 } as Record<TabName, TabData>;
