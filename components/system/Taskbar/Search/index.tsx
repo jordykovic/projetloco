@@ -74,9 +74,9 @@ type TabData = {
 
 export const NO_RESULTS = "NO_RESULTS";
 
-const SUGGESTED = ["FileExplorer", "Terminal", "Messenger", "Browser", "Paint"];
+const SUGGESTED = ["FileExplorer", "Terminal", "Browser", "Paint"];
 
-const GAMES = ["SpaceCadet", "Quake3", "DXBall"];
+const GAMES = ["ChromeDino", "Quake3", "DXBall"];
 
 const METADATA = {
   Documents: {
