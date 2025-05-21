@@ -417,8 +417,8 @@ const useWallpaper = (
         desktopRef.current?.append(video);
       } else {
         const applyWallpaper = (url: string): void => {
-          // Always use contain for slideshow backgrounds
-          const positionSize = isSlideshow ? "contain" : bgPositionSize[newWallpaperFit];
+          // Always use "center center / contain" for slideshow backgrounds
+          const positionSize = isSlideshow ? "center center / contain" : bgPositionSize[newWallpaperFit];
 
           const repeat = newWallpaperFit === "tile" ? "repeat" : "no-repeat";
           const isTopWindow = window === window.top;
