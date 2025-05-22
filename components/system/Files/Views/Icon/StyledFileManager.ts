@@ -24,7 +24,7 @@ const StyledFileManager = styled.ol<StyledFileManagerProps>`
 
   main > & {
     grid-auto-flow: column;
-    height: calc(50% - ${TASKBAR_HEIGHT}px);
+    height: calc(40% - ${TASKBAR_HEIGHT}px);
     overflow: visible;
     padding-bottom: 21px;
   }
