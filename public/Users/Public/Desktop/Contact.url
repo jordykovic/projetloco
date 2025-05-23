@@ -1,5 +1,4 @@
 [InternetShortcut]
-BaseURL=FileExplorer
+BaseURL=MonacoEditor
+Comment=About test
 IconFile=/System/Icons/here.png
-Type=System
-URL=/Users/Public/Torture Magasin/contacts.txt
