@@ -418,7 +418,7 @@ const useWallpaper = (
       } else {
         const applyWallpaper = (url: string): void => {
           // Always use "center center / contain" for slideshow backgrounds
-          const positionSize = isSlideshow ? "center center / contain" : bgPositionSize[newWallpaperFit];
+          const positionSize = isSlideshow ? "center 80% / contain" : bgPositionSize[newWallpaperFit];
 
           const repeat = newWallpaperFit === "tile" ? "repeat" : "no-repeat";
           const isTopWindow = window === window.top;
