@@ -11,7 +11,6 @@ export const bgPositionSize: Record<WallpaperFit, string> = {
   stretch: "center center / 100% 100%",
   tile: "50% 50%",
   bottom: "center bottom", // Add this line
-
 };
 
 export const WALLPAPER_PATHS: Record<
